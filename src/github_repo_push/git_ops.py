@@ -50,10 +50,10 @@ class GitRepo:
         result = self.run(["status", "--porcelain"])
         return result.stdout.strip()
 
-    def diff_shortstat(self, remote: str = "origin", branch: str = "main") -> GitDiffStat:
+    def diff_shortstat(self, remote: str = "origin", branch: str = "main", fetch: bool = True) -> GitDiffStat:
         """Get diff stat between local and remote branch."""
-        # Fetch first
-        self.run(["fetch", remote], check=False)
+        if fetch:
+            self.run(["fetch", remote], check=False)
         # Compare local HEAD to remote/branch
         result = self.run(["diff", "--shortstat", f"{remote}/{branch}...HEAD"], check=False)
         return parse_git_diff_stat(result.stdout)

@@ -6,7 +6,6 @@ import click
 
 from github_repo_push.registry import Registry
 from github_repo_push.syncer import Syncer
-from github_repo_push.dashboard import Dashboard
 from pathlib import Path
 
 
@@ -238,7 +237,12 @@ def adhoc(path, description, visibility, message, section, dry_run, skip_profile
 
 @cli.command()
 def dashboard():
-    """Launch the textual TUI dashboard."""
+    """Launch the textual TUI dashboard.
+
+    Rows appear as each repo's state arrives (states are fetched in parallel
+    in a background worker), with progress shown in the header — the screen
+    is never a silent blank while remotes are being queried.
+    """
     try:
         from textual.app import App
         from textual.widgets import Header, Footer, DataTable
@@ -246,7 +250,35 @@ def dashboard():
         click.echo("Textual not installed. Install with: pip install textual")
         return
 
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from datetime import datetime as _dt
+
+    registry = Registry(CONFIG_DIR)
+    registry.load()
+    syncer = Syncer(registry, DATA_DIR)
+    status_priority = {"error": 0, "diverged": 1, "behind": 2, "ahead": 3, "untracked": 4, "synced": 5}
+
+    def fetch_row(config) -> tuple:
+        try:
+            state = syncer.check_repo_state(config)
+            pushes = syncer.get_recent_pushes(config.name, count=1)
+            last_push = pushes[-1].timestamp.strftime("%Y-%m-%d %H:%M") if pushes else "Never"
+            status = state.sync_status.value if config.enabled else f"{state.sync_status.value} (disabled)"
+            return (
+                config.name,
+                status,
+                "yes" if state.uncommitted_changes else "",
+                state.local_branch or "",
+                state.remote_branch or "",
+                str(state.local_size_kb),
+                last_push,
+            )
+        except Exception as exc:  # noqa: BLE001 - a bad repo must not kill the dashboard
+            return (config.name, "error", "", "", "", "0", str(exc)[:60])
+
     class RepoDashboard(App):
+        TITLE = "Github Repo Push"
+
         def compose(self):
             yield Header()
             yield DataTable()
@@ -254,21 +286,31 @@ def dashboard():
 
         def on_mount(self):
             table = self.query_one(DataTable)
-            table.add_columns("Repo", "Status", "Local Branch", "Remote Branch", "Size (KB)", "Last Push")
-            registry = Registry(CONFIG_DIR)
-            registry.load()
-            syncer = Syncer(registry, DATA_DIR)
-            dashboard = Dashboard(registry, syncer)
-            data = dashboard.refresh()
-            for entry in data.entries:
-                table.add_row(
-                    entry.repo.name,
-                    entry.state.sync_status.value,
-                    entry.state.local_branch or "",
-                    entry.state.remote_branch or "",
-                    entry.state.local_size_kb,
-                    entry.last_push_str,
-                )
+            table.add_columns("Repo", "Status", "Dirty", "Local Branch", "Remote Branch", "Size (KB)", "Last Push")
+            self.sub_title = f"loading 0/{len(registry.repos)} repos…"
+            self.run_worker(self._load_rows, thread=True)
+
+        def _load_rows(self):
+            table = self.query_one(DataTable)
+            rows: list[tuple] = []
+            with ThreadPoolExecutor(max_workers=6) as pool:
+                futures = [pool.submit(fetch_row, config) for config in registry.repos]
+                for future in as_completed(futures):
+                    row = future.result()
+                    rows.append(row)
+                    self.call_from_thread(table.add_row, *row)
+                    self.call_from_thread(self._show_progress, len(rows))
+            rows.sort(key=lambda r: (status_priority.get(r[1].split()[0], 99), r[0].lower()))
+            self.call_from_thread(self._show_final, table, rows)
+
+        def _show_progress(self, done: int):
+            self.sub_title = f"loading {done}/{len(registry.repos)} repos…"
+
+        def _show_final(self, table, rows: list[tuple]):
+            table.clear()
+            for row in rows:
+                table.add_row(*row)
+            self.sub_title = f"{len(rows)} repos · updated {_dt.now().strftime('%H:%M:%S')}"
 
     app = RepoDashboard()
     app.run()

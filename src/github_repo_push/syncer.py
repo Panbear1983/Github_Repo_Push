@@ -54,7 +54,8 @@ class Syncer:
             state.local_size_kb = git_repo.get_size_kb()
             state.uncommitted_changes = git_repo.has_uncommitted_changes()
             state.sync_status = git_repo.sync_status("origin", config.push_branch)
-            state.diff_stat = git_repo.diff_shortstat("origin", config.push_branch)
+            # sync_status just fetched; don't fetch again for the diff stat
+            state.diff_stat = git_repo.diff_shortstat("origin", config.push_branch, fetch=False)
 
         # Check remote
         remote_info = self.github_api.get_repo(config.repo_name)
