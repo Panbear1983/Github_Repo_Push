@@ -1,0 +1,40 @@
+# Global push rules and defaults
+defaults:
+  owner: "Panbear1983"
+  profile_repo: "Panbear1983"
+  default_branch: "main"
+  push_branch: "main"
+  commit_message_template: "chore: automated update {timestamp}"
+  require_clean_worktree: true
+  ignore_patterns:
+    - "*.log"
+    - "*.tmp"
+    - "*.swp"
+    - "__pycache__/"
+    - ".pytest_cache/"
+    - ".mypy_cache/"
+    - ".venv/"
+    - "venv/"
+    - "node_modules/"
+    - ".env"
+    - ".env.*"
+    - "*.db"
+    - "*.sqlite"
+    - "*.sqlite3"
+    - ".DS_Store"
+    - "Thumbs.db"
+    - "*.pyc"
+    - ".coverage"
+    - "htmlcov/"
+    - ".tox/"
+    - "dist/"
+    - "build/"
+    - "*.egg-info/"
+  protected_branches:
+    - "main"
+    - "master"
+  require_pr_for_protected: false
+  max_parallel_pushes: 3
+  push_timeout_seconds: 120
+
+# Per-repo overrides can be set in repos.yaml
