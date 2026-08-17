@@ -84,9 +84,35 @@ class GitRepo:
     def add_all(self) -> None:
         self.run(["add", "-A"])
 
+    def list_dirty_files(self) -> list[str]:
+        """List modified/untracked/deleted paths (porcelain -z, rename-safe)."""
+        result = self.run(["status", "--porcelain=v1", "-z"])
+        paths: list[str] = []
+        fields = result.stdout.split("\0")
+        i = 0
+        while i < len(fields):
+            entry = fields[i]
+            if not entry:
+                i += 1
+                continue
+            status, path = entry[:2], entry[3:]
+            paths.append(path)
+            if status[0] in ("R", "C"):
+                i += 1  # skip the rename/copy origin path field
+            i += 1
+        return paths
+
+    def stage_files(self, paths: list[str]) -> None:
+        for start in range(0, len(paths), 100):
+            self.run(["add", "--"] + paths[start:start + 100])
+
+    def has_staged_changes(self) -> bool:
+        result = self.run(["diff", "--cached", "--quiet"], check=False)
+        return result.returncode != 0
+
     def commit(self, message: str) -> bool:
-        """Commit changes. Returns True if commit was made."""
-        if not self.has_uncommitted_changes():
+        """Commit staged changes. Returns True if a commit was made."""
+        if not self.has_staged_changes():
             return False
         self.run(["commit", "-m", message])
         return True

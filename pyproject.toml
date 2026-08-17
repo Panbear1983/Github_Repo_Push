@@ -28,10 +28,10 @@ dev = [
 ]
 
 [project.scripts]
-ghrp = "github_repo_push.cli:main"
-ghrp-dashboard = "github_repo_push.dashboard.app:main"
+ghrp = "github_repo_push.cli:cli"
 
 [tool.setuptools.packages.find]
+where = ["src"]
 include = ["github_repo_push*"]
 
 [tool.ruff]

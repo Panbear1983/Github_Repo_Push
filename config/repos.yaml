@@ -1,0 +1,209 @@
+repos:
+- name: Alpaca_Paper_Trader
+  local_path: /Users/peter/Desktop/Old_Projects/GitHub/Alpaca_Paper_Trader
+  remote: Panbear1983/Alpaca_Paper_Trader
+  default_branch: main
+  push_branch: main
+  protected_branches:
+  - main
+  - master
+  require_pr: false
+  ignore_patterns: []
+  profile_section: Applied Automation
+  profile_featured: true
+  profile_description: Supervised Alpaca paper-trading system with disclosure research,
+    strategy controls, Textual TUI, state management, and Telegram reporting
+  profile_ai_prompt: null
+  tags: []
+  cron_schedule: null
+  cron_enabled: false
+  visibility: public
+- name: ML_PROJECT_-Object_Recognition-_Reconnaissance_drone_footage
+  local_path: /Users/peter/Desktop/Old_Projects/GitHub/ML_PROJECT_-Object_Recognition-_Reconnaissance_drone_footage
+  remote: Panbear1983/ML_PROJECT_-Object_Recognition-_Reconnaissance_drone_footage
+  default_branch: main
+  push_branch: main
+  protected_branches:
+  - main
+  - master
+  require_pr: false
+  ignore_patterns: []
+  profile_section: Earlier Data and ML Work
+  profile_featured: false
+  profile_description: TensorFlow object-detection notebooks exploring multi-class
+    aircraft recognition from aerial imagery and dataset quality
+  profile_ai_prompt: null
+  tags: []
+  cron_schedule: null
+  cron_enabled: false
+  visibility: public
+- name: Financial_Reporting_Bot
+  local_path: /Users/peter/Desktop/Old_Projects/GitHub/Financial_Reporting_Bot
+  remote: Panbear1983/Financial_Reporting_Bot
+  default_branch: main
+  push_branch: main
+  protected_branches:
+  - main
+  - master
+  require_pr: false
+  ignore_patterns: []
+  profile_section: Applied Automation
+  profile_featured: true
+  profile_description: 'Automated Taiwan-market reporting: scheduled TWSE/TPEX pipeline
+    turning portfolio P/L, brokerage CSV imports, watchlist notes, technical signals,
+    and AI commentary into Telegram-ready morning and closing reports'
+  profile_ai_prompt: null
+  tags: []
+  cron_schedule: null
+  cron_enabled: false
+  visibility: public
+- name: panbear-daily
+  local_path: /Users/peter/Desktop/Old_Projects/GitHub/panbear-daily
+  remote: Panbear1983/panbear-daily
+  default_branch: master
+  push_branch: main
+  protected_branches:
+  - main
+  - master
+  require_pr: false
+  ignore_patterns: []
+  profile_section: Other Projects
+  profile_featured: false
+  profile_description: ''
+  profile_ai_prompt: null
+  tags: []
+  cron_schedule: null
+  cron_enabled: false
+  visibility: private
+- name: Multi-Funtion_SOC_Agent_Research
+  local_path: /Users/peter/Desktop/Old_Projects/GitHub/Multi-Funtion_SOC_Agent_Research
+  remote: Panbear1983/Multi-Funtion_SOC_Agent_Research
+  default_branch: main
+  push_branch: main
+  protected_branches:
+  - main
+  - master
+  require_pr: false
+  ignore_patterns: []
+  profile_section: Featured Security Work
+  profile_featured: true
+  profile_description: Security automation research lab with threat-hunting case studies
+    and AI-assisted SOC workflow prototypes using Python, KQL, Sentinel, and Defender
+  profile_ai_prompt: null
+  tags: []
+  cron_schedule: null
+  cron_enabled: false
+  visibility: public
+- name: ML_PROJECT_Tracking_Barbell_Exercises
+  local_path: /Users/peter/Desktop/Old_Projects/GitHub/ML_PROJECT_Tracking_Barbell_Exercises
+  remote: Panbear1983/ML_PROJECT_Tracking_Barbell_Exercises
+  default_branch: main
+  push_branch: main
+  protected_branches:
+  - main
+  - master
+  require_pr: false
+  ignore_patterns: []
+  profile_section: Earlier Data and ML Work
+  profile_featured: false
+  profile_description: Sensor-based ML project classifying five barbell exercises
+    from accelerometer and gyroscope data
+  profile_ai_prompt: null
+  tags: []
+  cron_schedule: null
+  cron_enabled: false
+  visibility: public
+- name: Panbear1983
+  local_path: /Users/peter/Desktop/Old_Projects/GitHub/Panbear1983
+  remote: Panbear1983/Panbear1983
+  default_branch: main
+  push_branch: main
+  protected_branches:
+  - main
+  - master
+  require_pr: false
+  ignore_patterns: []
+  profile_section: Other Projects
+  profile_featured: false
+  profile_description: Professional profile and portfolio for security operations,
+    threat hunting, and workflow automation
+  profile_ai_prompt: null
+  tags: []
+  cron_schedule: null
+  cron_enabled: false
+  visibility: public
+- name: Family_Budget_Agent
+  local_path: /Users/peter/Desktop/Old_Projects/GitHub/Family_Budget_Agent
+  remote: Panbear1983/Family_Budget_Agent
+  default_branch: main
+  push_branch: main
+  protected_branches:
+  - main
+  - master
+  require_pr: false
+  ignore_patterns: []
+  profile_section: Featured Security Work
+  profile_featured: false
+  profile_description: AI-powered bilingual family budget management tool
+  profile_ai_prompt: null
+  tags: []
+  cron_schedule: null
+  cron_enabled: false
+  visibility: private
+- name: ML_PROJECT_Lung_Cancer_Prediction
+  local_path: /Users/peter/Desktop/Old_Projects/GitHub/ML_PROJECT_Lung_Cancer_Prediction
+  remote: Panbear1983/ML_PROJECT_Lung_Cancer_Prediction
+  default_branch: main
+  push_branch: main
+  protected_branches:
+  - main
+  - master
+  require_pr: false
+  ignore_patterns: []
+  profile_section: Earlier Data and ML Work
+  profile_featured: false
+  profile_description: Educational ML notebooks comparing classification models on
+    a public lung-cancer risk dataset; not a clinical diagnostic tool
+  profile_ai_prompt: null
+  tags: []
+  cron_schedule: null
+  cron_enabled: false
+  visibility: public
+- name: Machine_Learning_Projects
+  local_path: /Users/peter/Desktop/Old_Projects/GitHub/Machine_Learning_Projects
+  remote: Panbear1983/Machine_Learning_Projects
+  default_branch: main
+  push_branch: main
+  protected_branches:
+  - main
+  - master
+  require_pr: false
+  ignore_patterns: []
+  profile_section: Earlier Data and ML Work
+  profile_featured: true
+  profile_description: Earlier machine-learning and data-science projects covering
+    computer vision, recommendation, forecasting, and analysis
+  profile_ai_prompt: null
+  tags: []
+  cron_schedule: null
+  cron_enabled: false
+  visibility: public
+- name: Github_Push_Automator
+  local_path: /Users/peter/Desktop/Old_Projects/GitHub/Github_Push_Automator
+  remote: Panbear1983/Github_Push_Automator
+  default_branch: main
+  push_branch: main
+  protected_branches:
+  - main
+  - master
+  require_pr: false
+  ignore_patterns: []
+  profile_section: Applied Automation
+  profile_featured: true
+  profile_description: Python CLI for publishing local repositories and maintaining
+    a curated GitHub profile README with review controls
+  profile_ai_prompt: null
+  tags: []
+  cron_schedule: null
+  cron_enabled: false
+  visibility: public

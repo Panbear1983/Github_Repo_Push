@@ -8,6 +8,7 @@ from typing import Optional
 
 from github_repo_push.git_ops import GitRepo
 from github_repo_push.github_api import GitHubAPI, get_github_api
+from github_repo_push.ignore import filter_paths
 from github_repo_push.models import (
     PushRecord,
     PushStatus,
@@ -63,6 +64,46 @@ class Syncer:
         state.last_sync_check = datetime.now()
         return state
 
+    def _ignore_patterns(self, config: RepoConfig) -> list[str]:
+        """Merge global push-rule ignore patterns with per-repo overrides."""
+        patterns: list[str] = []
+        if self.registry.push_rules and self.registry.push_rules.defaults:
+            patterns.extend(self.registry.push_rules.defaults.get("ignore_patterns") or [])
+        patterns.extend(config.ignore_patterns or [])
+        return patterns
+
+    def _default_commit_message(self) -> str:
+        template = "chore: automated update {timestamp}"
+        if self.registry.push_rules and self.registry.push_rules.defaults:
+            template = self.registry.push_rules.defaults.get("commit_message_template", template)
+        return template.format(timestamp=datetime.now().isoformat())
+
+    def _outgoing_range(self, git_repo: GitRepo, branch: str) -> str:
+        """Diff range covering everything a push would publish."""
+        if git_repo.get_commit_hash(f"origin/{branch}"):
+            return f"origin/{branch}..HEAD"
+        empty_tree = git_repo.run(["hash-object", "-t", "tree", "/dev/null"]).stdout.strip()
+        return f"{empty_tree}..HEAD"
+
+    def _secret_scan(self, git_repo: GitRepo, branch: str) -> None:
+        """Block the push if the outgoing diff trips the secret-scan guardrail."""
+        import os
+        import subprocess as sp
+        script = Path(__file__).resolve().parents[2] / "scripts" / "secret_scan.sh"
+        if not script.exists():
+            raise RuntimeError(f"Secret-scan script missing: {script} (refusing to push a public repo unscanned)")
+        rng = self._outgoing_range(git_repo, branch)
+        files = git_repo.run(["diff", "--name-only", rng], check=False).stdout
+        env = os.environ.copy()
+        env["STAGED_FILES"] = files
+        result = sp.run(
+            ["bash", str(script), "git", "diff", rng],
+            cwd=git_repo.path, env=env, text=True, capture_output=True,
+        )
+        if result.returncode != 0:
+            detail = ((result.stdout or "") + (result.stderr or "")).strip()
+            raise RuntimeError(f"Secret-scan guardrail blocked push:\n{detail}")
+
     def push_repo(
         self,
         config: RepoConfig,
@@ -70,12 +111,16 @@ class Syncer:
         dry_run: bool = False,
         force: bool = False,
         skip_profile: bool = False,
+        auto_commit: bool = True,
     ) -> PushResult:
-        """Push a single repo with full workflow."""
+        """Push a single repo with full workflow.
+
+        Dry-run is strictly read-only: nothing is staged, committed, created,
+        or pushed — the record describes what a real run would do.
+        """
         start_time = time.time()
         local_path = config.get_full_local_path()
 
-        # Initialize record
         record = PushRecord(
             repo=config.name,
             local_path=str(local_path),
@@ -85,69 +130,91 @@ class Syncer:
         )
 
         try:
-            # Validate
             if not local_path.exists():
                 raise RuntimeError(f"Local path does not exist: {local_path}")
 
+            if config.require_pr and config.push_branch in config.protected_branches:
+                raise RuntimeError(
+                    f"Branch '{config.push_branch}' is protected and require_pr is set; direct push refused"
+                )
+
             git_repo = GitRepo(local_path)
             if not git_repo.is_repo():
+                if dry_run:
+                    record.status = PushStatus.DRY_RUN
+                    record.message = "Would git init and create remote repo"
+                    self._save_history(record)
+                    return PushResult(True, record, record.message)
                 git_repo.init()
 
-            # Ensure git identity
             owner = config.owner
             git_repo.ensure_identity(owner, f"{owner}@users.noreply.github.com")
 
             # Ensure remote
             remote_url = git_repo.get_remote_url("origin")
             if not remote_url:
-                # Check if remote exists
                 if self.github_api.repo_exists(config.repo_name):
-                    git_repo.add_remote("origin", f"https://github.com/{config.remote}.git")
+                    if not dry_run:
+                        git_repo.add_remote("origin", f"https://github.com/{config.remote}.git")
                 else:
                     if dry_run:
                         record.status = PushStatus.DRY_RUN
                         record.message = "Would create remote repo"
+                        self._save_history(record)
                         return PushResult(True, record, "Dry run: would create remote repo")
-                    # Create remote repo
                     self.github_api.create_repo(config, local_path)
                     git_repo.add_remote("origin", f"https://github.com/{config.remote}.git")
 
-            # Get size before
             record.size_before_kb = git_repo.get_size_kb()
 
-            # Stage and commit changes
-            commit_msg = message or self.registry.push_rules.defaults.get("commit_message_template", "chore: automated update {timestamp}").format(timestamp=datetime.now().isoformat())
-            git_repo.add_all()
-            committed = git_repo.commit(commit_msg)
-            record.commit_message = commit_msg
+            # Stage and commit, honoring ignore patterns. Dry-run only inspects.
+            committed = False
+            if auto_commit:
+                dirty = git_repo.list_dirty_files()
+                allowed, skipped = filter_paths(dirty, self._ignore_patterns(config))
+                record.skipped_files = skipped
+                commit_msg = message or self._default_commit_message()
+                if dry_run:
+                    committed = bool(allowed)
+                    if committed:
+                        record.commit_message = commit_msg
+                        record.message = f"Would commit {len(allowed)} file(s), skip {len(skipped)}"
+                else:
+                    if allowed:
+                        git_repo.stage_files(allowed)
+                    committed = git_repo.commit(commit_msg)
+                    if committed:
+                        record.commit_message = commit_msg
             record.commit_sha = git_repo.get_commit_hash("HEAD")
 
-            if not committed and not dry_run:
+            # Decide whether pushing is needed and safe
+            sync = git_repo.sync_status("origin", config.push_branch)
+            if sync == SyncStatus.SYNCED and not committed:
                 record.status = PushStatus.SKIPPED
-                record.message = "No changes to commit"
+                record.message = "Nothing to push (synced, no new changes)"
                 record.duration_ms = int((time.time() - start_time) * 1000)
                 self._save_history(record)
-                return PushResult(True, record, "No changes to commit")
+                return PushResult(True, record, record.message)
+            if sync in (SyncStatus.BEHIND, SyncStatus.DIVERGED) and not force:
+                raise RuntimeError(
+                    f"Local is {sync.value} relative to origin/{config.push_branch}; "
+                    "pull/resolve manually or rerun with --force (force-with-lease)"
+                )
 
-            # Push
-            if not dry_run:
+            if dry_run:
+                record.status = PushStatus.DRY_RUN
+                if not record.message:
+                    record.message = f"Would push ({sync.value})"
+            else:
+                if config.visibility == RepoVisibility.PUBLIC.value:
+                    self._secret_scan(git_repo, config.push_branch)
                 git_repo.push("origin", config.push_branch, force=force)
                 record.status = PushStatus.SUCCESS
-            else:
-                record.status = PushStatus.DRY_RUN
 
-            # Get size after
             record.size_after_kb = git_repo.get_size_kb()
             record.duration_ms = int((time.time() - start_time) * 1000)
-
-            # Update profile README if needed (placeholder)
-            if not dry_run and not skip_profile and config.profile_section:
-                record.triggered_profile_update = False
-
-            # Save history
             self._save_history(record)
-
-            return PushResult(True, record, f"Push {'simulated' if dry_run else 'completed'} successfully")
+            return PushResult(True, record, record.message or f"Push {'simulated' if dry_run else 'completed'} successfully")
 
         except Exception as e:
             record.status = PushStatus.FAILED
@@ -163,15 +230,33 @@ class Syncer:
         parallel: int = 3,
         dry_run: bool = False,
         message: Optional[str] = None,
+        commit: bool = False,
     ) -> list[PushResult]:
-        """Push multiple repos."""
+        """Push multiple repos.
+
+        Dirty repos are skipped unless `commit` is set — auto-committing a
+        whole fleet is opt-in, per-repo pushes stay deliberate.
+        """
         results = []
         for config in self.registry.repos:
-            if only_changed:
-                state = self.check_repo_state(config)
-                if state.sync_status == SyncStatus.SYNCED and not state.uncommitted_changes:
-                    continue
-            result = self.push_repo(config, message=message, dry_run=dry_run)
+            if not config.enabled:
+                continue
+            state = self.check_repo_state(config)
+            if only_changed and state.sync_status == SyncStatus.SYNCED and not state.uncommitted_changes:
+                continue
+            if state.uncommitted_changes and not commit:
+                record = PushRecord(
+                    repo=config.name,
+                    local_path=str(config.get_full_local_path()),
+                    remote=config.remote,
+                    branch=config.push_branch,
+                    dry_run=dry_run,
+                    status=PushStatus.SKIPPED,
+                    message="Dirty worktree skipped (rerun with --commit to auto-commit)",
+                )
+                results.append(PushResult(True, record, record.message))
+                continue
+            result = self.push_repo(config, message=message, dry_run=dry_run, auto_commit=commit)
             results.append(result)
         return results
 

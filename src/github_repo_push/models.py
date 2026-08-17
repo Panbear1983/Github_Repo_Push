@@ -58,6 +58,7 @@ class RepoConfig(BaseModel):
     cron_schedule: Optional[str] = None  # cron expression
     cron_enabled: bool = False
     visibility: str = Field(default="public")
+    enabled: bool = True  # False = skip in push-all/status-all (e.g. archived remote)
 
     @field_validator('visibility')
     @classmethod
@@ -122,6 +123,7 @@ class PushRecord(BaseModel):
     duration_ms: int = 0
     status: PushStatus = PushStatus.SUCCESS
     dry_run: bool = False
+    skipped_files: list[str] = Field(default_factory=list)  # excluded by ignore patterns
     triggered_profile_update: bool = False
     profile_commit_sha: Optional[str] = None
     error: Optional[str] = None
