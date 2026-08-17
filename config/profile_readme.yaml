@@ -85,11 +85,11 @@ sections:
         featured: true
         description: "Supervised paper-trading automation with disclosure research, Textual TUI controls, state management, and scheduled reporting."
         ai_prompt: "Describe this as a supervised Alpaca paper-trading system with disclosure research, strategy controls, Textual TUI, and Telegram reporting."
-      - name: "Github_Push_Automator"
-        title: "GitHub Push Automator"
+      - name: "Github_Repo_Push"
+        title: "Github Repo Push"
         featured: true
-        description: "Repository publishing and profile-maintenance automation with review gates."
-        ai_prompt: "Describe this as a Python CLI for publishing local repos to GitHub and maintaining a curated profile README with review controls."
+        description: "Registry-driven repository push manager with ignore-pattern staging, secret-scan guardrails, profile README automation, and a Textual dashboard."
+        ai_prompt: "Describe this as a registry-driven GitHub push manager with safety guardrails, profile README automation, and a Textual dashboard."
       - name: "gemini-token-status"
         title: "Gemini Token Status"
         featured: true

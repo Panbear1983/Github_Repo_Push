@@ -188,9 +188,9 @@ repos:
   cron_schedule: null
   cron_enabled: false
   visibility: public
-- name: Github_Push_Automator
-  local_path: /Users/peter/Desktop/Old_Projects/GitHub/Github_Push_Automator
-  remote: Panbear1983/Github_Push_Automator
+- name: Github_Repo_Push
+  local_path: /Users/peter/Desktop/Old_Projects/GitHub/Github_Repo_Push
+  remote: Panbear1983/Github_Repo_Push
   default_branch: main
   push_branch: main
   protected_branches:
@@ -200,11 +200,14 @@ repos:
   ignore_patterns: []
   profile_section: Applied Automation
   profile_featured: true
-  profile_description: Python CLI for publishing local repositories and maintaining
-    a curated GitHub profile README with review controls
+  profile_description: Registry-driven repository push manager with ignore-pattern
+    staging, secret-scan guardrails, profile README automation, and a Textual dashboard.
   profile_ai_prompt: null
-  tags: []
+  tags:
+  - python
+  - git
+  - automation
   cron_schedule: null
   cron_enabled: false
   visibility: public
-  enabled: false
+  enabled: true
