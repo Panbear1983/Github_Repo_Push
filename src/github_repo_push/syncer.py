@@ -9,6 +9,8 @@ from typing import Optional
 from github_repo_push.git_ops import GitRepo
 from github_repo_push.github_api import GitHubAPI, get_github_api
 from github_repo_push.ignore import filter_paths
+from github_repo_push.profile_markdown import apply_profile_entry
+from github_repo_push.readme_gen import ensure_readme, find_readme, infer_description
 from github_repo_push.models import (
     PushRecord,
     PushStatus,
@@ -72,6 +74,11 @@ class Syncer:
         patterns.extend(config.ignore_patterns or [])
         return patterns
 
+    def _profile_repo_name(self) -> str:
+        if self.registry.push_rules and self.registry.push_rules.defaults:
+            return self.registry.push_rules.defaults.get("profile_repo", "Panbear1983")
+        return "Panbear1983"
+
     def _default_commit_message(self) -> str:
         template = "chore: automated update {timestamp}"
         if self.registry.push_rules and self.registry.push_rules.defaults:
@@ -112,6 +119,7 @@ class Syncer:
         force: bool = False,
         skip_profile: bool = False,
         auto_commit: bool = True,
+        update_profile: bool = False,
     ) -> PushResult:
         """Push a single repo with full workflow.
 
@@ -167,6 +175,18 @@ class Syncer:
 
             record.size_before_kb = git_repo.get_size_kb()
 
+            # Ensure a README exists before publishing (ported from
+            # Github_Push_Automator). Dry-run only reports what it would do.
+            readme_description_text = config.profile_description
+            if auto_commit:
+                if dry_run:
+                    if find_readme(local_path) is None:
+                        record.message = "Would generate README.md; "
+                else:
+                    _, readme_description_text, _ = ensure_readme(
+                        local_path, config.repo_name, config.profile_description
+                    )
+
             # Stage and commit, honoring ignore patterns. Dry-run only inspects.
             committed = False
             if auto_commit:
@@ -178,7 +198,7 @@ class Syncer:
                     committed = bool(allowed)
                     if committed:
                         record.commit_message = commit_msg
-                        record.message = f"Would commit {len(allowed)} file(s), skip {len(skipped)}"
+                        record.message = (record.message or "") + f"Would commit {len(allowed)} file(s), skip {len(skipped)}"
                 else:
                     if allowed:
                         git_repo.stage_files(allowed)
@@ -210,6 +230,17 @@ class Syncer:
                     self._secret_scan(git_repo, config.push_branch)
                 git_repo.push("origin", config.push_branch, force=force)
                 record.status = PushStatus.SUCCESS
+
+                # Surgical per-push profile entry (opt-in via --update-profile)
+                if update_profile and not skip_profile and config.profile_section:
+                    description = readme_description_text or infer_description(local_path, config.repo_name)
+                    record.triggered_profile_update = apply_profile_entry(
+                        owner=config.owner,
+                        profile_repo=self._profile_repo_name(),
+                        section=config.profile_section,
+                        repo_name=config.repo_name,
+                        description=description,
+                    )
 
             record.size_after_kb = git_repo.get_size_kb()
             record.duration_ms = int((time.time() - start_time) * 1000)

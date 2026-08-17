@@ -70,7 +70,8 @@ def status_all():
 @click.option("--message", "-m", help="Commit message to use.")
 @click.option("--force", is_flag=True, help="Force push with --force-with-lease.")
 @click.option("--skip-profile", is_flag=True, help="Skip updating the profile README.")
-def push(repo_name, dry_run, message, force, skip_profile):
+@click.option("--update-profile", is_flag=True, help="Surgically update this repo's profile README entry after pushing.")
+def push(repo_name, dry_run, message, force, skip_profile, update_profile):
     """Push a single repository."""
     registry = Registry(CONFIG_DIR)
     registry.load()
@@ -79,7 +80,7 @@ def push(repo_name, dry_run, message, force, skip_profile):
     if not config:
         click.echo(f"Error: Repository '{repo_name}' not found in registry.", err=True)
         raise click.Abort()
-    result = syncer.push_repo(config, message=message, dry_run=dry_run, force=force, skip_profile=skip_profile)
+    result = syncer.push_repo(config, message=message, dry_run=dry_run, force=force, skip_profile=skip_profile, update_profile=update_profile)
     if result.success:
         click.echo(f"✓ {result.message}")
         if result.record.dry_run:
@@ -137,6 +138,101 @@ def profile_update(push):
             click.echo("  Profile README pushed to GitHub.")
     else:
         click.echo(f"✗ {message}", err=True)
+        raise click.Abort()
+
+
+@cli.command()
+@click.argument("path", required=False, default=".")
+@click.option("--description", help="Description used if a README must be generated.")
+def ensure_readme(path, description):
+    """Create a README.md for PATH (default: current directory) if missing."""
+    from github_repo_push.readme_gen import ensure_readme as _ensure_readme
+
+    local = Path(path).expanduser().resolve()
+    if local.is_file():
+        local = local.parent
+    if not local.exists():
+        click.echo(f"Error: path does not exist: {local}", err=True)
+        raise click.Abort()
+    readme, final_description, created = _ensure_readme(local, local.name, description)
+    click.echo(f"README {'created' if created else 'already present'}: {readme}")
+    click.echo(f"Description: {final_description}")
+
+
+@cli.command()
+@click.argument("path", required=False, default=".")
+@click.option("--description", help="Description for README/profile entry.")
+@click.option("--visibility", type=click.Choice(["public", "private"]), default="public", help="Visibility if the GitHub repo must be created.")
+@click.option("--message", "-m", help="Commit message to use.")
+@click.option("--section", default="Applied Automation", help="Profile README section for the entry.")
+@click.option("--dry-run", is_flag=True, help="Show what would be done without making changes.")
+@click.option("--skip-profile", is_flag=True, help="Push only; do not touch the profile README.")
+@click.option("--register", is_flag=True, help="Add this repo to the registry after a successful push.")
+def adhoc(path, description, visibility, message, section, dry_run, skip_profile, register):
+    """Push an arbitrary local repo (default: the one you're standing in).
+
+    Registry-less one-off push, ported from Github_Push_Automator: ensures
+    git repo + README, commits (honoring global ignore patterns), creates or
+    reuses the GitHub repo, pushes, and surgically updates the profile README
+    entry unless --skip-profile is given.
+    """
+    from github_repo_push.git_ops import GitRepo
+    from github_repo_push.models import RepoConfig
+
+    registry = Registry(CONFIG_DIR)
+    registry.load()
+    syncer = Syncer(registry, DATA_DIR)
+
+    local = Path(path).expanduser().resolve()
+    if local.is_file():
+        local = local.parent
+    if not local.exists():
+        click.echo(f"Error: path does not exist: {local}", err=True)
+        raise click.Abort()
+
+    git_repo = GitRepo(local)
+    toplevel = git_repo.run(["rev-parse", "--show-toplevel"], check=False)
+    if toplevel.returncode == 0 and toplevel.stdout.strip():
+        local = Path(toplevel.stdout.strip()).resolve()
+        git_repo = GitRepo(local)
+
+    branch = "main"
+    if git_repo.is_repo():
+        current = git_repo.run(["branch", "--show-current"], check=False).stdout.strip()
+        if current:
+            branch = current
+
+    defaults = registry.push_rules.defaults if registry.push_rules else {}
+    owner = defaults.get("owner", "Panbear1983")
+    config = registry.get_repo(local.name) or RepoConfig(
+        name=local.name,
+        local_path=str(local),
+        remote=f"{owner}/{local.name}",
+        default_branch=branch,
+        push_branch=branch,
+        visibility=visibility,
+        profile_section=section,
+        profile_description=description,
+    )
+
+    result = syncer.push_repo(
+        config,
+        message=message,
+        dry_run=dry_run,
+        skip_profile=skip_profile,
+        update_profile=not skip_profile,
+    )
+    if result.success:
+        click.echo(f"✓ {result.message}")
+        if result.record.skipped_files:
+            click.echo(f"  Skipped by ignore rules: {', '.join(result.record.skipped_files)}")
+        if result.record.triggered_profile_update:
+            click.echo("  Profile README entry updated.")
+        if register and not dry_run and not registry.get_repo(config.name):
+            registry.add_repo(config)
+            click.echo(f"  Registered {config.name} in {registry.repos_file}")
+    else:
+        click.echo(f"✗ {result.message}", err=True)
         raise click.Abort()
 
 
