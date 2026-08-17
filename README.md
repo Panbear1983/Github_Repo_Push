@@ -10,7 +10,7 @@ Consolidates and supersedes [Github_Push_Automator](https://github.com/Panbear19
 - **README Generation**: Creates a README.md for repos that lack one before publishing
 - **Profile README**: Maintains `Panbear1983/Panbear1983` — full regeneration from config (byte-identical to the live README) plus a surgical per-entry editor
 - **Ad-hoc Push**: `ghrp adhoc` publishes whatever repo you're standing in, registry or not
-- **Dashboard**: Textual TUI showing sync status, branches, sizes, last push for all repos
+- **Dashboard**: Textual TUI control panel — sync status, dirty flag, GitHub push dates, plus push/add actions driving the same guarded machinery as the CLI
 
 ## Quick Start
 
@@ -54,7 +54,25 @@ python3 -m github_repo_push.cli profile-update --push
 | `ensure-readme [path]` | Generate README.md if missing |
 | `profile-preview` | Render the profile README to stdout |
 | `profile-update [--push]` | Regenerate (and optionally push) the profile README |
-| `dashboard` | Launch the Textual TUI |
+| `dashboard` | Launch the Textual TUI control panel |
+
+### Dashboard
+
+Rows stream in as repo states arrive (parallel fetch, progress in the header).
+Columns: Repo, Status, Dirty (uncommitted worktree), Local/Remote Branch,
+Size, **GitHub Push** (the account's real `pushedAt`) and **ghrp Push** (this
+tool's audit log). Key bindings:
+
+| Key | Action |
+|-----|--------|
+| `p` | Push the selected repo — confirm modal shows what will be committed/skipped, with a Dry-run option |
+| `a` | Add a repo to GitHub without the browser: pick an unregistered local folder (or type a path), choose visibility, and it registers, `gh repo create`s, and pushes |
+| `r` | Refresh all rows |
+| `q` | Quit |
+
+All dashboard actions run the same `Syncer` path as the CLI, so ignore
+patterns, the secret scan, and branch protections always apply; outcomes are
+appended to the audit log and shown in the log pane.
 
 ## Configuration
 

@@ -63,6 +63,7 @@ class Syncer:
         if remote_info:
             state.remote_size_kb = remote_info.size_kb
             state.remote_branch = remote_info.default_branch
+            state.remote_pushed_at = remote_info.pushed_at
 
         state.last_sync_check = datetime.now()
         return state

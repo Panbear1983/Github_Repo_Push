@@ -102,6 +102,7 @@ class RepoState(BaseModel):
     uncommitted_changes: bool = False
     sync_status: SyncStatus = SyncStatus.UNTRACKED
     diff_stat: GitDiffStat = Field(default_factory=GitDiffStat)
+    remote_pushed_at: Optional[datetime] = None  # GitHub's pushedAt (ground truth)
     last_push: Optional[datetime] = None
     last_sync_check: Optional[datetime] = None
     error: Optional[str] = None
