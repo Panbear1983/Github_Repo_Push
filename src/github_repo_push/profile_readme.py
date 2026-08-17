@@ -18,21 +18,36 @@ def load_profile_config(registry: Registry) -> ProfileReadmeConfig:
     return ProfileReadmeConfig()
 
 
+def render_entry_url(owner: str, repo: ProfileRepoConfig) -> str:
+    """Build the entry's URL, honoring sub-paths the way GitHub renders them.
+
+    Sub-paths use /tree/main/ for directories and /blob/main/ for files
+    (inferred from the last component having an extension), percent-encoded
+    except parentheses, matching the live README's link style.
+    """
+    from urllib.parse import quote
+
+    url = f"https://github.com/{owner}/{repo.name}"
+    if repo.path:
+        kind = "blob" if "." in repo.path.rsplit("/", 1)[-1] else "tree"
+        url += f"/{kind}/main/" + quote(repo.path, safe="/()")
+    return url
+
+
+def render_entry(owner: str, repo: ProfileRepoConfig) -> str:
+    url = render_entry_url(owner, repo)
+    if "(" in url or ")" in url:
+        url = f"<{url}>"
+    text = repo.title or repo.name
+    link = f"[{text}]({url})"
+    if repo.featured:
+        link = f"**{link}**"
+    suffix = f" — {repo.description}" if repo.description else ""
+    return f"- {link}{suffix}"
+
+
 def generate_profile_readme(config: ProfileReadmeConfig) -> str:
     """Generate profile README content from config."""
-    # Use Jinja2 template if available
-    if config.template:
-        try:
-            from jinja2 import Template
-            template = Template(config.template)
-            return template.render(
-                profile_repo=config.profile_repo,
-                sections=config.sections,
-            )
-        except ImportError:
-            pass
-
-    # Fallback: simple generation
     lines = [
         "# Peter W. Pan",
         "",
@@ -56,16 +71,18 @@ def generate_profile_readme(config: ProfileReadmeConfig) -> str:
     sorted_sections = sorted(config.sections, key=lambda s: s.order)
 
     for section in sorted_sections:
-        lines.append(f"## {section.name}")
+        lines.append(f"{'#' * section.level} {section.name}")
         lines.append("")
         if section.description:
             lines.append(section.description)
             lines.append("")
+        if section.preamble:
+            lines.append(section.preamble)
+            lines.append("")
         for repo in section.repos:
-            prefix = "- **" if repo.featured else "- "
-            suffix = "**" if repo.featured else ""
-            lines.append(f"{prefix}[{repo.name}](https://github.com/{config.profile_repo}/{repo.name}){suffix} — {repo.description}")
-        lines.append("")
+            lines.append(render_entry(config.owner, repo))
+        if section.repos:
+            lines.append("")
 
     # Credentials
     lines.extend([
@@ -93,7 +110,8 @@ def update_profile_readme(registry: Registry, dry_run: bool = False) -> tuple[bo
         return True, content
 
     # Clone profile repo, update README, push
-    github_api = get_github_api(profile_config.profile_repo)
+    owner = profile_config.owner
+    github_api = get_github_api(owner)
     profile_repo_name = profile_config.profile_repo
 
     with tempfile.TemporaryDirectory(prefix="github-profile-") as tmp:
@@ -102,7 +120,7 @@ def update_profile_readme(registry: Registry, dry_run: bool = False) -> tuple[bo
 
         # Clone
         if not github_api.clone_repo(profile_repo_name, clone_path):
-            raise RuntimeError(f"Failed to clone {profile_repo_name}")
+            raise RuntimeError(f"Failed to clone {owner}/{profile_repo_name}")
 
         # Update README
         readme_path = clone_path / "README.md"
@@ -110,7 +128,6 @@ def update_profile_readme(registry: Registry, dry_run: bool = False) -> tuple[bo
 
         # Commit and push
         git_repo = GitRepo(clone_path)
-        owner = profile_config.profile_repo
         git_repo.ensure_identity(owner, f"{owner}@users.noreply.github.com")
 
         if git_repo.has_uncommitted_changes():

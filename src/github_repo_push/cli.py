@@ -121,7 +121,7 @@ def profile_preview():
     registry.load()
     from github_repo_push.profile_readme import preview_profile_readme
     content = preview_profile_readme(registry)
-    click.echo(content)
+    click.echo(content, nl=False)
 
 
 @cli.command()

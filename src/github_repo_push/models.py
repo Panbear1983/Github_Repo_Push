@@ -134,11 +134,14 @@ class ProfileSectionConfig(BaseModel):
     name: str
     description: str = ""
     order: int = 0
+    level: int = 2  # markdown heading level (## = 2, ### = 3)
+    preamble: str = ""  # free text rendered between heading and entries
     repos: list[ProfileRepoConfig] = Field(default_factory=list)
 
 
 class ProfileRepoConfig(BaseModel):
     name: str
+    title: Optional[str] = None  # display name for the link (default: repo name)
     path: Optional[str] = None  # subpath within repo for sub-entries
     featured: bool = True
     description: str = ""
@@ -146,6 +149,7 @@ class ProfileRepoConfig(BaseModel):
 
 
 class ProfileReadmeConfig(BaseModel):
+    owner: str = "Panbear1983"
     profile_repo: str = "Panbear1983"
     sections: list[ProfileSectionConfig] = Field(default_factory=list)
     template: str = ""

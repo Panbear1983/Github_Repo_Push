@@ -1,141 +1,110 @@
-# Profile README configuration
+# Profile README configuration.
+# Mirrors the live Panbear1983/Panbear1983 README as of 2026-08-17
+# (snapshot: ~/.hermes/profiles/orchestrator/github_repo_push/data/
+#  profile_readme_live_snapshot_2026-08-17.md).
+# The bio header, Credentials, and Connect blocks are rendered by
+# profile_readme.generate_profile_readme.
+
+owner: "Panbear1983"
 profile_repo: "Panbear1983"
+
 sections:
   - name: "Featured Security Work"
-    description: "SOC automation research and threat hunting case studies"
     order: 1
+    level: 2
+    repos: []
+
+  - name: "SOC Automation Research"
+    order: 2
+    level: 3
     repos:
       - name: "Multi-Funtion_SOC_Agent_Research"
+        title: "Multi-Function SOC Agent Research"
         featured: true
         description: "Research prototypes for AI-assisted alert enrichment, threat detection, analyst workflows, and security monitoring."
         ai_prompt: "Summarize this repo as a security operations research project with AI-assisted SOC workflows, threat hunting, and Microsoft Sentinel/Defender integration."
       - name: "Multi-Funtion_SOC_Agent_Research"
+        title: "Agentic SOC Analyst prototype"
         path: "openAI_Agentic_SOC_Analyst"
-        featured: false
+        featured: true
         description: "Experimental SOC workflow automation with analyst-oriented outputs and local/cloud model support."
         ai_prompt: "Describe this as an experimental agentic SOC analyst prototype with local/cloud LLM support."
 
   - name: "Threat Hunting Case Studies"
-    description: "Lab/CTF investigations demonstrating threat hunting methodology"
-    order: 2
+    order: 3
+    level: 3
+    preamble: "The following are lab/CTF investigations, not production incident claims:"
     repos:
       - name: "Multi-Funtion_SOC_Agent_Research"
+        title: "RDP Password Spray"
         path: "Threat_Hunting_Projects/(CTF) RDP Password Spray.md"
-        featured: false
-        description: "RDP password spray attack investigation."
+        featured: true
+        description: ""
       - name: "Multi-Funtion_SOC_Agent_Research"
+        title: "Papertrail: Insider HR Tamper"
         path: "Threat_Hunting_Projects/(CTF) Papertrail.md"
-        featured: false
-        description: "Insider HR tampering investigation via log analysis."
+        featured: true
+        description: ""
       - name: "Multi-Funtion_SOC_Agent_Research"
+        title: "Lurker Re-emerged"
         path: "Threat_Hunting_Projects/(CTF) Lurker.md"
-        featured: false
-        description: "Persistent threat actor re-emergence analysis."
+        featured: true
+        description: ""
       - name: "Multi-Funtion_SOC_Agent_Research"
+        title: "Assistance"
         path: "Threat_Hunting_Projects/(CTF) Assistance.md"
-        featured: false
-        description: "Social engineering and credential compromise case study."
+        featured: true
+        description: ""
       - name: "Multi-Funtion_SOC_Agent_Research"
-        path: "Threat_Hunting_Projects/(CTF) Threat Hunt SAGA #1 Port of Entry.md"
-        featured: false
-        description: "Initial access vector analysis in threat hunt scenario."
+        title: "Threat Hunt SAGA #1: Port of Entry"
+        path: "Threat_Hunting_Projects/(CTF) Threat Hunt SAGA#1: Port of Entry.md"
+        featured: true
+        description: ""
       - name: "Multi-Funtion_SOC_Agent_Research"
-        path: "Threat_Hunting_Projects/(CTF) Threat Hunt SAGA #2 Cargo Hold.md"
-        featured: false
-        description: "Lateral movement and data staging investigation."
+        title: "Threat Hunt SAGA #2: Cargo Hold"
+        path: "Threat_Hunting_Projects/(CTF) Threat Hunt SAGA#2: Cargo Hold.md"
+        featured: true
+        description: ""
 
   - name: "Applied Automation"
-    description: "Production automation pipelines for finance, real estate, and reporting"
-    order: 3
+    order: 4
+    level: 2
     repos:
       - name: "Kash_Realestate_Property_Database"
+        title: "Kash Real Estate Intelligence Pipeline"
         featured: true
         description: "Local-first property research platform with provider ingestion, SQLite entity resolution, flood and financial enrichment, Codex-assisted ranking, a Textual dashboard, and scheduled change digests."
         ai_prompt: "Describe this as a local-first real estate intelligence pipeline with multi-provider ingestion, entity resolution, enrichment, AI-assisted ranking, and a Textual dashboard."
       - name: "Financial_Reporting_Bot"
+        title: "Financial Reporting Bot"
         featured: true
         description: "Scheduled Taiwan-market reporting pipeline with brokerage imports, technical signals, recovery controls, and Telegram delivery."
         ai_prompt: "Describe this as an automated Taiwan stock market reporting bot with brokerage CSV imports, technical analysis, and Telegram delivery."
       - name: "Alpaca_Paper_Trader"
+        title: "Alpaca Paper Trader"
         featured: true
         description: "Supervised paper-trading automation with disclosure research, Textual TUI controls, state management, and scheduled reporting."
         ai_prompt: "Describe this as a supervised Alpaca paper-trading system with disclosure research, strategy controls, Textual TUI, and Telegram reporting."
       - name: "Github_Push_Automator"
+        title: "GitHub Push Automator"
         featured: true
         description: "Repository publishing and profile-maintenance automation with review gates."
         ai_prompt: "Describe this as a Python CLI for publishing local repos to GitHub and maintaining a curated profile README with review controls."
       - name: "gemini-token-status"
+        title: "Gemini Token Status"
         featured: true
         description: "Context-window monitoring for Gemini CLI workflows."
         ai_prompt: "Describe this as a Gemini CLI hook that reports context-window usage for long-running and agentic workflows."
 
   - name: "Earlier Data and ML Work"
-    description: "Computer vision, recommendation, forecasting, and analysis projects"
-    order: 4
+    order: 5
+    level: 2
     repos:
       - name: "Machine_Learning_Projects"
+        title: "Machine Learning Projects"
         featured: true
         description: "Computer vision, recommendation, forecasting, and data-analysis projects."
         ai_prompt: "Describe this as a collection of earlier ML projects covering computer vision, recommendation systems, forecasting, and data analysis."
-      - name: "ML_PROJECT_Tracking_Barbell_Exercises"
-        featured: false
-        description: "Sensor-based ML project classifying five barbell exercises from accelerometer and gyroscope data."
-        ai_prompt: "Describe this as an ML project classifying barbell exercises from IMU sensor data using accelerometer and gyroscope readings."
-      - name: "ML_PROJECT_-Object_Recognition-_Reconnaissance_drone_footage"
-        featured: false
-        description: "TensorFlow object-detection notebooks exploring multi-class aircraft recognition from aerial imagery."
-        ai_prompt: "Describe this as TensorFlow object detection notebooks for multi-class aircraft recognition from drone footage."
-      - name: "ML_PROJECT_Lung_Cancer_Prediction"
-        featured: false
-        description: "Educational ML notebooks comparing classification models on a public lung-cancer risk dataset."
-        ai_prompt: "Describe this as educational ML notebooks comparing classification models on lung cancer risk data (not a clinical tool)."
-      - name: "ML_PROJECT_Used_Car_Price_prediction"
-        featured: false
-        description: "Regression notebook exploring feature engineering and used-car price prediction from tabular data."
-        ai_prompt: "Describe this as a regression notebook for used car price prediction with feature engineering."
-
-# Template for profile README
-template: |
-  # Peter W. Pan
-
-  **Security operations + automation | Threat hunting | Python, KQL, Microsoft Sentinel & Defender | Local AI | EN / 中文**
-
-  I work at the intersection of security operations, workflow automation, and applied AI. I build Python tools and reproducible labs for threat hunting, detection workflows, vulnerability management, and privacy-preserving local analysis.
-
-  My goal is practical security engineering: clear analyst workflows, explicit guardrails, measurable results, and automation that supports—rather than replaces—human judgment.
-
-  ## Current Focus
-
-  - Security operations and incident-triage workflows
-  - Threat hunting with KQL, Microsoft Sentinel, and Microsoft Defender
-  - Python automation for reporting, monitoring, and decision support
-  - Vulnerability management and network-security labs
-  - Local LLMs, agent isolation, and tool-use guardrails
-
-  {% for section in sections %}
-  ## {{ section.name }}
-
-  {{ section.description }}
-
-  {% for repo in section.repos %}
-  {% if repo.featured %}
-  - **[{{ repo.name }}](https://github.com/{{ profile_repo }}/{{ repo.name }})** — {{ repo.description }}
-  {% else %}
-  - [{{ repo.name }}](https://github.com/{{ profile_repo }}/{{ repo.name }}) — {{ repo.description }}
-  {% endif %}
-  {% endfor %}
-
-  {% endfor %}
-
-  ## Credentials
-
-  - **[CompTIA Security+ (SY0-701)](https://www.credly.com/earner/earned/badge/af63ab88-bb91-47c8-b390-0bbba3817702)**
-  - **[Google Cybersecurity Professional Certificate](https://www.coursera.org/account/accomplishments/specialization/1MHZD401CMYA)**
-  - **[Cisco Networking Basics](https://www.credly.com/badges/b328db9e-cc05-4e6f-a7eb-d8e5bd927552)**
-
-  ## Connect
-
-  - **[LinkedIn](https://www.linkedin.com/in/peter-w-pan-49a961200/)**
 
 # AI description generation (future)
 ai_enabled: false

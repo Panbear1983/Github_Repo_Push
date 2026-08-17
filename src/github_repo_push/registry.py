@@ -58,9 +58,12 @@ class Registry:
                 name=sec["name"],
                 description=sec.get("description", ""),
                 order=sec.get("order", 0),
+                level=sec.get("level", 2),
+                preamble=sec.get("preamble", ""),
                 repos=repos,
             ))
         self._profile_config = ProfileReadmeConfig(
+            owner=data.get("owner", "Panbear1983"),
             profile_repo=data.get("profile_repo", "Panbear1983"),
             sections=sections,
             template=data.get("template", ""),
@@ -88,12 +91,15 @@ class Registry:
         if not self._profile_config:
             return
         data = {
+            "owner": self._profile_config.owner,
             "profile_repo": self._profile_config.profile_repo,
             "sections": [
                 {
                     "name": sec.name,
                     "description": sec.description,
                     "order": sec.order,
+                    "level": sec.level,
+                    "preamble": sec.preamble,
                     "repos": [r.model_dump() for r in sec.repos],
                 }
                 for sec in self._profile_config.sections
