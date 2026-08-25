@@ -1,14 +1,48 @@
 repos:
-- name: Alpaca_Paper_Trader
-  local_path: /Users/peter/Desktop/Old_Projects/GitHub/Alpaca_Paper_Trader
-  remote: Panbear1983/Alpaca_Paper_Trader
-  default_branch: main
-  push_branch: main
+- name: Hermes_Telegram_Bridge
+  local_path: /Users/peter/GitHub/Hermes_Telegram_Bridge
+  remote: Panbear1983/Hermes_Telegram_Bridge
+  default_branch: llm-ladder-completeness
+  push_branch: llm-ladder-completeness
   protected_branches:
   - main
   - master
   require_pr: false
   ignore_patterns: []
+  profile_section: Other Projects
+  profile_featured: false
+  profile_description: ''
+  profile_ai_prompt: null
+  tags: []
+  cron_schedule: null
+  cron_enabled: false
+  visibility: private
+  enabled: true
+- name: Alpaca_Paper_Trader
+  local_path: /Users/peter/GitHub/Alpaca_Paper_Trader
+  remote: Panbear1983/Alpaca_Paper_Trader
+  default_branch: main
+  push_branch: main
+  protected_branches: &id001
+  - main
+  - master
+  require_pr: false
+  ignore_patterns:
+  - .copied_trades*.json
+  - .position_state*.json
+  - .swing_state*.json
+  - .intraday_state*.json
+  - .isr_alpha_state*.json
+  - .trading_schedule_state*.json
+  - .event_watcher_state.json
+  - pool_state.json
+  - performance_log.json
+  - politician_history.json
+  - review_log.json
+  - vetting_log.json
+  - isr2026_signals.json
+  - reports/*.md
+  - '*.bak_pre_split'
   profile_section: Applied Automation
   profile_featured: true
   profile_description: Supervised Alpaca paper-trading system with disclosure research,
@@ -18,8 +52,9 @@ repos:
   cron_schedule: null
   cron_enabled: false
   visibility: public
+  enabled: true
 - name: ML_PROJECT_-Object_Recognition-_Reconnaissance_drone_footage
-  local_path: /Users/peter/Desktop/Old_Projects/GitHub/ML_PROJECT_-Object_Recognition-_Reconnaissance_drone_footage
+  local_path: /Users/peter/GitHub/ML_PROJECT_-Object_Recognition-_Reconnaissance_drone_footage
   remote: Panbear1983/ML_PROJECT_-Object_Recognition-_Reconnaissance_drone_footage
   default_branch: main
   push_branch: main
@@ -37,11 +72,12 @@ repos:
   cron_schedule: null
   cron_enabled: false
   visibility: public
+  enabled: true
 - name: Financial_Reporting_Bot
-  local_path: /Users/peter/Desktop/Old_Projects/GitHub/Financial_Reporting_Bot
+  local_path: /Users/peter/GitHub/Financial_Reporting_Bot
   remote: Panbear1983/Financial_Reporting_Bot
   default_branch: main
-  push_branch: main
+  push_branch: consolidate-onto-github-2026-07-07
   protected_branches:
   - main
   - master
@@ -57,11 +93,12 @@ repos:
   cron_schedule: null
   cron_enabled: false
   visibility: public
+  enabled: true
 - name: panbear-daily
-  local_path: /Users/peter/Desktop/Old_Projects/GitHub/panbear-daily
+  local_path: /Users/peter/GitHub/panbear-daily
   remote: Panbear1983/panbear-daily
   default_branch: master
-  push_branch: main
+  push_branch: master
   protected_branches:
   - main
   - master
@@ -75,8 +112,9 @@ repos:
   cron_schedule: null
   cron_enabled: false
   visibility: private
+  enabled: true
 - name: Multi-Funtion_SOC_Agent_Research
-  local_path: /Users/peter/Desktop/Old_Projects/GitHub/Multi-Funtion_SOC_Agent_Research
+  local_path: /Users/peter/GitHub/Multi-Funtion_SOC_Agent_Research
   remote: Panbear1983/Multi-Funtion_SOC_Agent_Research
   default_branch: main
   push_branch: main
@@ -94,8 +132,9 @@ repos:
   cron_schedule: null
   cron_enabled: false
   visibility: public
+  enabled: true
 - name: ML_PROJECT_Tracking_Barbell_Exercises
-  local_path: /Users/peter/Desktop/Old_Projects/GitHub/ML_PROJECT_Tracking_Barbell_Exercises
+  local_path: /Users/peter/GitHub/ML_PROJECT_Tracking_Barbell_Exercises
   remote: Panbear1983/ML_PROJECT_Tracking_Barbell_Exercises
   default_branch: main
   push_branch: main
@@ -113,8 +152,9 @@ repos:
   cron_schedule: null
   cron_enabled: false
   visibility: public
+  enabled: true
 - name: Panbear1983
-  local_path: /Users/peter/Desktop/Old_Projects/GitHub/Panbear1983
+  local_path: /Users/peter/GitHub/Panbear1983
   remote: Panbear1983/Panbear1983
   default_branch: main
   push_branch: main
@@ -132,8 +172,9 @@ repos:
   cron_schedule: null
   cron_enabled: false
   visibility: public
+  enabled: true
 - name: Family_Budget_Agent
-  local_path: /Users/peter/Desktop/Old_Projects/GitHub/Family_Budget_Agent
+  local_path: /Users/peter/GitHub/Family_Budget_Agent
   remote: Panbear1983/Family_Budget_Agent
   default_branch: main
   push_branch: main
@@ -150,8 +191,29 @@ repos:
   cron_schedule: null
   cron_enabled: false
   visibility: private
+  enabled: true
+- name: Github_Repo_Push
+  local_path: /Users/peter/GitHub/Github_Repo_Push
+  remote: Panbear1983/Github_Repo_Push
+  default_branch: main
+  push_branch: main
+  protected_branches:
+  - main
+  - master
+  require_pr: false
+  ignore_patterns: []
+  profile_section: Other Projects
+  profile_featured: false
+  profile_description: Registry-driven push manager and dashboard for the Panbear1983
+    GitHub account
+  profile_ai_prompt: null
+  tags: []
+  cron_schedule: null
+  cron_enabled: false
+  visibility: public
+  enabled: true
 - name: ML_PROJECT_Lung_Cancer_Prediction
-  local_path: /Users/peter/Desktop/Old_Projects/GitHub/ML_PROJECT_Lung_Cancer_Prediction
+  local_path: /Users/peter/GitHub/ML_PROJECT_Lung_Cancer_Prediction
   remote: Panbear1983/ML_PROJECT_Lung_Cancer_Prediction
   default_branch: main
   push_branch: main
@@ -169,8 +231,9 @@ repos:
   cron_schedule: null
   cron_enabled: false
   visibility: public
+  enabled: true
 - name: Machine_Learning_Projects
-  local_path: /Users/peter/Desktop/Old_Projects/GitHub/Machine_Learning_Projects
+  local_path: /Users/peter/GitHub/Machine_Learning_Projects
   remote: Panbear1983/Machine_Learning_Projects
   default_branch: main
   push_branch: main
@@ -188,25 +251,21 @@ repos:
   cron_schedule: null
   cron_enabled: false
   visibility: public
-- name: Github_Repo_Push
-  local_path: /Users/peter/Desktop/Old_Projects/GitHub/Github_Repo_Push
-  remote: Panbear1983/Github_Repo_Push
-  default_branch: main
-  push_branch: main
-  protected_branches:
-  - main
-  - master
+  enabled: true
+- name: Kash_Realestate_Property
+  local_path: /Users/peter/GitHub/Kash_Realestate_Property
+  remote: Panbear1983/Kash_Realestate_Property_Database
+  default_branch: llm-ladder-completeness
+  push_branch: llm-ladder-completeness
+  protected_branches: *id001
   require_pr: false
   ignore_patterns: []
   profile_section: Applied Automation
-  profile_featured: true
-  profile_description: Registry-driven repository push manager with ignore-pattern
-    staging, secret-scan guardrails, profile README automation, and a Textual dashboard.
+  profile_featured: false
+  profile_description: Real-estate property intake and database pipeline with Telegram
+    bot ingestion
   profile_ai_prompt: null
-  tags:
-  - python
-  - git
-  - automation
+  tags: []
   cron_schedule: null
   cron_enabled: false
   visibility: public
