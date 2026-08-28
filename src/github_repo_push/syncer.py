@@ -125,7 +125,7 @@ class Syncer:
         return template.format(timestamp=datetime.now().isoformat())
 
     def _outgoing_range(self, git_repo: GitRepo, branch: str) -> str:
-        """Diff range covering everything a push would publish."""
+        """Commit range covering everything a push would publish."""
         if git_repo.get_commit_hash(f"origin/{branch}"):
             return f"origin/{branch}..HEAD"
         empty_tree = git_repo.run(["hash-object", "-t", "tree", "/dev/null"]).stdout.strip()
@@ -139,11 +139,21 @@ class Syncer:
         if not script.exists():
             raise RuntimeError(f"Secret-scan script missing: {script} (refusing to push a public repo unscanned)")
         rng = self._outgoing_range(git_repo, branch)
-        files = git_repo.run(["diff", "--name-only", rng], check=False).stdout
+
+        # Scan PER COMMIT (`log -p`), not endpoint-to-endpoint (`diff A..B`).
+        # A two-dot diff shows only the NET change, so a secret added in one
+        # commit and removed in the next is invisible to it — while both commits
+        # still get pushed and the secret lives in the remote's history forever.
+        # This is not hypothetical: on 2026-08-28 a key-shaped literal rode into
+        # this repo's own public history exactly that way, because ghrp commits
+        # before it scans and the follow-up commit cancelled it out of the diff.
+        files = git_repo.run(
+            ["log", "--pretty=format:", "--name-only", rng], check=False
+        ).stdout
         env = os.environ.copy()
         env["STAGED_FILES"] = files
         result = sp.run(
-            ["bash", str(script), "git", "diff", rng],
+            ["bash", str(script), "git", "log", "-p", "--no-color", rng],
             cwd=git_repo.path, env=env, text=True, capture_output=True,
         )
         if result.returncode != 0:
