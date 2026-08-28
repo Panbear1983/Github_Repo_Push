@@ -280,7 +280,19 @@ def make_app():
             table.clear()
             for row in rows:
                 table.add_row(*row, key=row[0])
-            self.sub_title = f"{len(rows)} repos · updated {datetime.now().strftime('%H:%M:%S')}"
+            self.sub_title = (
+                f"{len(rows)} repos · updated {datetime.now().strftime('%H:%M:%S')}"
+                f" · routine {self._routine_state()}"
+            )
+
+        def _routine_state(self) -> str:
+            """Show the real launchd state so the UI reflects what is scheduled."""
+            try:
+                from github_repo_push.routine import status
+
+                return status().describe()
+            except Exception:
+                return "unknown"
 
         # ---- helpers -----------------------------------------------------
 

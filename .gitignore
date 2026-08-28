@@ -8,3 +8,8 @@ venv/
 data/
 .DS_Store
 build/
+
+# Credentials — this repo is PUBLIC, never commit a real env file
+.env
+.env.*
+!.env.example

@@ -23,7 +23,7 @@ repos:
   remote: Panbear1983/Alpaca_Paper_Trader
   default_branch: main
   push_branch: main
-  protected_branches: &id001
+  protected_branches:
   - main
   - master
   require_pr: false
@@ -257,13 +257,58 @@ repos:
   remote: Panbear1983/Kash_Realestate_Property_Database
   default_branch: llm-ladder-completeness
   push_branch: llm-ladder-completeness
-  protected_branches: *id001
+  protected_branches:
+  - main
+  - master
   require_pr: false
   ignore_patterns: []
   profile_section: Applied Automation
   profile_featured: false
   profile_description: Real-estate property intake and database pipeline with Telegram
     bot ingestion
+  profile_ai_prompt: null
+  tags: []
+  cron_schedule: null
+  cron_enabled: false
+  visibility: public
+  enabled: true
+- name: Funnel_Network_engine
+  local_path: /Users/peter/GitHub/Funnel_Network_engine
+  remote: Panbear1983/Funnel_Network_engine
+  default_branch: main
+  push_branch: main
+  protected_branches:
+  - main
+  - master
+  require_pr: false
+  ignore_patterns: []
+  profile_section: Applied Automation
+  profile_featured: false
+  profile_description: 'Industry-agnostic research and visualization engine: guides
+    an intake survey on any industry or technology area, researches the production
+    stack, identifies the companies at each layer, maps their relationships, and exports
+    a funnel/network chart.'
+  profile_ai_prompt: null
+  tags: []
+  cron_schedule: null
+  cron_enabled: false
+  visibility: public
+  enabled: true
+- name: CHC_Rental
+  local_path: /Users/peter/GitHub/CHC_Rental
+  remote: Panbear1983/CHC_Rental
+  default_branch: main
+  push_branch: main
+  protected_branches:
+  - main
+  - master
+  require_pr: false
+  ignore_patterns: []
+  profile_section: Applied Automation
+  profile_featured: false
+  profile_description: 'Rental-listing notifier with a terminal dashboard: combines
+    configured sources into a daily digest, with a bounded incremental observation
+    path and controlled Telegram alerting.'
   profile_ai_prompt: null
   tags: []
   cron_schedule: null

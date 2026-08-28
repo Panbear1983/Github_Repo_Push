@@ -30,6 +30,43 @@ class PushResult:
     message: str
 
 
+@dataclass
+class DriftEntry:
+    """One repo's line in a drift sweep."""
+
+    repo: str
+    sync_status: SyncStatus
+    dirty_files: int = 0
+    pushed: bool = False
+    commits_pushed: int = 0
+    error: Optional[str] = None
+
+    @property
+    def needs_attention(self) -> bool:
+        return bool(self.error) or self.dirty_files > 0 or self.sync_status in (
+            SyncStatus.BEHIND,
+            SyncStatus.DIVERGED,
+        )
+
+    def summary(self) -> str:
+        if self.error:
+            return f"FAILED — {self.error}"
+        if self.sync_status is SyncStatus.BEHIND:
+            base = "BEHIND origin"
+        elif self.sync_status is SyncStatus.DIVERGED:
+            base = "DIVERGED from origin"
+        elif self.pushed:
+            n = self.commits_pushed
+            base = f"PUSHED {n} commit{'s' if n != 1 else ''}"
+        elif self.sync_status is SyncStatus.AHEAD:
+            base = "AHEAD (not pushed)"
+        else:
+            base = "synced"
+        if self.dirty_files:
+            base += f", DIRTY {self.dirty_files}"
+        return base
+
+
 class Syncer:
     def __init__(self, registry: Registry, data_dir: Path):
         self.registry = registry
@@ -256,6 +293,56 @@ class Syncer:
             record.duration_ms = int((time.time() - start_time) * 1000)
             self._save_history(record)
             return PushResult(False, record, f"Push failed: {e}")
+
+    def drift_sweep(self, dry_run: bool = False, push: bool = True) -> list[DriftEntry]:
+        """Report drift across the fleet, pushing only work that is already committed.
+
+        This is the unattended path used by the daily routine, so it never commits
+        on the user's behalf — `push_repo(auto_commit=False)` skips all staging and
+        commit logic and publishes existing commits only.
+
+        Note this deliberately does NOT reuse `push_all`, which skips dirty repos
+        wholesale: a repo that is both dirty *and* ahead would never get its
+        committed work published. Here dirt is reported but does not block the push.
+        BEHIND/DIVERGED keep push_repo's existing refusal and are never forced.
+        """
+        entries: list[DriftEntry] = []
+        for config in self.registry.repos:
+            if not config.enabled:
+                continue
+            entry = DriftEntry(repo=config.name, sync_status=SyncStatus.UNTRACKED)
+            try:
+                state = self.check_repo_state(config)
+                entry.sync_status = state.sync_status
+                if not state.local_exists:
+                    entry.error = "local path missing"
+                    entries.append(entry)
+                    continue
+
+                git_repo = GitRepo(config.get_full_local_path())
+                entry.dirty_files = len(git_repo.list_dirty_files())
+
+                if state.sync_status is SyncStatus.AHEAD:
+                    entry.commits_pushed = self._count_outgoing(git_repo, config.push_branch)
+                    if push and not dry_run:
+                        result = self.push_repo(config, auto_commit=False, skip_profile=True)
+                        entry.pushed = result.success
+                        if not result.success:
+                            entry.error = result.record.error or result.message
+            except Exception as e:  # a single bad repo must not abort the sweep
+                entry.error = str(e)
+            entries.append(entry)
+        return entries
+
+    def _count_outgoing(self, git_repo: GitRepo, branch: str) -> int:
+        """How many commits the local branch has that origin/<branch> does not."""
+        result = git_repo.run(
+            ["rev-list", "--count", f"origin/{branch}..HEAD"], check=False
+        )
+        try:
+            return int(result.stdout.strip())
+        except (ValueError, AttributeError):
+            return 0
 
     def push_all(
         self,

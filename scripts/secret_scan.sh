@@ -23,10 +23,17 @@ PATTERNS=(
   '(OPENROUTER[A-Z_]*KEY|BRAVE_API_KEY|TELEGRAM_BOT_TOKEN|[A-Z_]*_SECRET|[A-Z_]*API_KEY|[A-Z_]*_TOKEN)[[:space:]]*[:=][[:space:]]*['"'"'"]?[A-Za-z0-9_.\-]{16,}'
 )
 # placeholder values that are safe (templates/examples)
-PLACEHOLDER='your_key_here|your_token_here|your_id_here|changeme|xxxx|<[^>]+>|example|placeholder|REDACTED'
+PLACEHOLDER='your_key_here|your_token_here|your_id_here|changeme|xxxx|<[^>]+>|example|placeholder|REDACTED|fake|dummy|not-a-real'
 
 # ---- filenames that must never be pushed ---------------------------------
-BLOCKED_FILES='(^|/)\.env$|(^|/)\.env\.[^t]|(^|/)[^/]*\.pem$|(^|/)[^/]*\.key$|(^|/)id_rsa|(^|/)credentials(/|$)|(^|/)auth\.json$|(^|/)session_state\.json$'
+# Every .env variant is blocked (.env, .env.local, .env.bak, .env.tmp, ...).
+# The old pattern was `\.env\.[^t]`, which wrongly ALLOWED .env.tmp/.env.test
+# while wrongly BLOCKING the legitimate .env.example template. Templates are
+# now carved out explicitly by ALLOWED_FILES below.
+BLOCKED_FILES='(^|/)\.env($|\.)|(^|/)[^/]*\.pem$|(^|/)[^/]*\.key$|(^|/)id_rsa|(^|/)credentials(/|$)|(^|/)auth\.json$|(^|/)session_state\.json$'
+
+# Placeholder-only templates that are safe to publish.
+ALLOWED_FILES='(^|/)\.env\.(example|sample|template|dist)$'
 
 fail=0
 
@@ -34,6 +41,9 @@ fail=0
 if [ -n "${STAGED_FILES:-}" ]; then
   while IFS= read -r f; do
     [ -z "$f" ] && continue
+    if printf '%s\n' "$f" | grep -qE "$ALLOWED_FILES"; then
+      continue
+    fi
     if printf '%s\n' "$f" | grep -qE "$BLOCKED_FILES"; then
       echo "${RED}BLOCKED file (never push secrets/personal data): $f${NC}"
       fail=1

@@ -254,5 +254,78 @@ def dashboard():
     run_dashboard(CONFIG_DIR, DATA_DIR)
 
 
+@cli.command()
+@click.option("--dry-run", is_flag=True, help="Report drift without pushing anything.")
+@click.option("--no-push", is_flag=True, help="Report only; never push, even when ahead.")
+@click.option("--no-notify", is_flag=True, help="Skip the Telegram report.")
+def drift(dry_run, no_push, no_notify):
+    """Report fleet drift and push work that is already committed.
+
+    This is the unattended daily path. It never commits on your behalf: only
+    repos whose local branch is AHEAD of origin get pushed, and dirty worktrees
+    are reported, not staged. BEHIND/DIVERGED repos are reported, never forced.
+    """
+    from github_repo_push.notify import format_report, send
+
+    registry = Registry(CONFIG_DIR)
+    registry.load()
+    syncer = Syncer(registry, DATA_DIR)
+
+    entries = syncer.drift_sweep(dry_run=dry_run, push=not no_push)
+    report = format_report(entries)
+    click.echo(report)
+
+    if not no_notify and not dry_run:
+        if send(report, DATA_DIR):
+            click.echo("\nTelegram report sent.")
+        else:
+            click.echo("\nTelegram not configured (set GHRP_TELEGRAM_BOT_TOKEN / "
+                       "GHRP_TELEGRAM_CHAT_ID) — report shown above only.")
+
+    failures = [e for e in entries if e.error]
+    if failures:
+        raise SystemExit(1)
+
+
+@cli.group()
+def routine():
+    """Manage the daily drift job (launchd)."""
+
+
+@routine.command("on")
+@click.option("--at", "at_time", default="09:00", help="Local time to run, HH:MM (default 09:00).")
+def routine_on(at_time):
+    """Install and load the daily drift job."""
+    from github_repo_push import routine as routine_mod
+
+    try:
+        hour, minute = (int(part) for part in at_time.split(":", 1))
+    except ValueError:
+        raise click.BadParameter(f"--at must be HH:MM, got {at_time!r}")
+
+    routine_mod.install(_REPO_ROOT, hour=hour, minute=minute)
+    click.echo(f"Routine installed: {routine_mod.status().describe()}")
+    click.echo(f"  plist: {routine_mod.PLIST_PATH}")
+
+
+@routine.command("off")
+def routine_off():
+    """Unload and remove the daily drift job."""
+    from github_repo_push import routine as routine_mod
+
+    if routine_mod.uninstall():
+        click.echo("Routine removed.")
+    else:
+        click.echo("Routine was not installed.")
+
+
+@routine.command("status")
+def routine_status():
+    """Show whether the daily drift job is installed and loaded."""
+    from github_repo_push import routine as routine_mod
+
+    click.echo(f"Routine: {routine_mod.status().describe()}")
+
+
 if __name__ == "__main__":
     cli()
