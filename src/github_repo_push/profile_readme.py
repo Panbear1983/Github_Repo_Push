@@ -7,8 +7,9 @@ from typing import Optional
 
 from github_repo_push.git_ops import GitRepo
 from github_repo_push.github_api import GitHubAPI, get_github_api
-from github_repo_push.models import ProfileReadmeConfig, ProfileSectionConfig, ProfileRepoConfig, RepoConfig
+from github_repo_push.models import ProfileReadmeConfig, ProfileSectionConfig, ProfileRepoConfig, RepoConfig, RepoVisibility
 from github_repo_push.registry import Registry
+from github_repo_push.syncer import Syncer
 
 
 def load_profile_config(registry: Registry) -> ProfileReadmeConfig:
@@ -34,7 +35,7 @@ def render_entry_url(owner: str, repo: ProfileRepoConfig) -> str:
     return url
 
 
-def render_entry(owner: str, repo: ProfileRepoConfig) -> str:
+def render_entry(owner: str, repo: ProfileRepoConfig, badge: Optional[str] = None) -> str:
     url = render_entry_url(owner, repo)
     if "(" in url or ")" in url:
         url = f"<{url}>"
@@ -43,11 +44,47 @@ def render_entry(owner: str, repo: ProfileRepoConfig) -> str:
     if repo.featured:
         link = f"**{link}**"
     suffix = f" — {repo.description}" if repo.description else ""
+    if badge:
+        suffix += f" · {badge}"
     return f"- {link}{suffix}"
 
 
-def generate_profile_readme(config: ProfileReadmeConfig) -> str:
+def build_profile_badges(registry: Registry, syncer: Syncer) -> dict:
+    """Pushed-date + open-PR badge text, public repos only. Never raises per-repo.
+
+    Kept deliberately separate from anything the daily unattended drift job
+    touches (check_repo_state/drift_sweep) — this only runs when Peter runs
+    profile-preview/profile-update by hand.
+    """
+    badges: dict[str, str] = {}
+    for config in registry.repos:
+        if not config.enabled or config.visibility != RepoVisibility.PUBLIC.value:
+            continue
+        parts = []
+        try:
+            remote = syncer.github_api.get_repo(config.repo_name)
+            if remote and remote.pushed_at:
+                parts.append(f"pushed {remote.pushed_at.astimezone().strftime('%Y-%m-%d')}")
+        except Exception:
+            pass
+        try:
+            prs = syncer.github_api.list_open_prs(config.repo_name)
+            if prs:
+                parts.append(f"{len(prs)} open PR{'s' if len(prs) != 1 else ''}")
+        except Exception:
+            pass
+        if parts:
+            # Keyed by the actual GitHub repo name (not the local registry name)
+            # since that's what render_entry_url/ProfileRepoConfig.name use to build
+            # links — the two differ for at least one repo (Kash_Realestate_Property
+            # locally vs. Kash_Realestate_Property_Database on GitHub).
+            badges[config.repo_name] = " · ".join(parts)
+    return badges
+
+
+def generate_profile_readme(config: ProfileReadmeConfig, badges: Optional[dict] = None) -> str:
     """Generate profile README content from config."""
+    badges = badges or {}
     lines = [
         "# Peter W. Pan",
         "",
@@ -80,7 +117,7 @@ def generate_profile_readme(config: ProfileReadmeConfig) -> str:
             lines.append(section.preamble)
             lines.append("")
         for repo in section.repos:
-            lines.append(render_entry(config.owner, repo))
+            lines.append(render_entry(config.owner, repo, badges.get(repo.name)))
         if section.repos:
             lines.append("")
 
@@ -101,10 +138,11 @@ def generate_profile_readme(config: ProfileReadmeConfig) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
-def update_profile_readme(registry: Registry, dry_run: bool = False) -> tuple[bool, str]:
+def update_profile_readme(registry: Registry, syncer: Syncer, dry_run: bool = False) -> tuple[bool, str]:
     """Update the profile README repo."""
     profile_config = load_profile_config(registry)
-    content = generate_profile_readme(profile_config)
+    badges = build_profile_badges(registry, syncer)
+    content = generate_profile_readme(profile_config, badges)
 
     if dry_run:
         return True, content
@@ -184,7 +222,8 @@ def update_profile_for_repo(registry: Registry, repo_config: RepoConfig) -> bool
         return False
 
 
-def preview_profile_readme(registry: Registry) -> str:
-    """Preview the profile README without pushing."""
+def preview_profile_readme(registry: Registry, syncer: Syncer) -> str:
+    """Preview the profile README without pushing. Touches the network (badges)."""
     profile_config = load_profile_config(registry)
-    return generate_profile_readme(profile_config)
+    badges = build_profile_badges(registry, syncer)
+    return generate_profile_readme(profile_config, badges)

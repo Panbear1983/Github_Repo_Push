@@ -5,10 +5,12 @@ so pushes are fully exercised without touching GitHub. The repo is private in
 the fixture so the secret-scan gate (public-only) stays out of the way.
 """
 
+import json
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import yaml
 
@@ -122,6 +124,57 @@ class DashboardPilotTests(unittest.IsolatedAsyncioTestCase):
             await pilot.press("escape")
             await pilot.pause()
             self.assertNotEqual(app.screen.__class__.__name__, "AddRepoScreen")
+        fx.tmp.cleanup()
+
+    async def test_open_prs_binding_shows_cached_prs(self):
+        fx = Fixture()
+        repo_view_payload = json.dumps({
+            "name": "work_repo", "description": None, "isPrivate": True,
+            "defaultBranchRef": {"name": "main"}, "diskUsage": 10,
+            "pushedAt": "2026-08-01T00:00:00Z", "url": "https://github.com/Panbear1983/work_repo",
+            "sshUrl": "git@github.com:Panbear1983/work_repo.git",
+            "stargazerCount": 0, "forkCount": 0, "repositoryTopics": [], "primaryLanguage": None,
+        })
+        pr_list_payload = (
+            '[{"number":5,"title":"Add feature","author":{"login":"contributor1"},'
+            '"url":"https://github.com/Panbear1983/work_repo/pull/5",'
+            '"createdAt":"2026-08-20T00:00:00Z","headRefName":"feature-x","isDraft":false}]'
+        )
+
+        def fake_run(cmd, **kwargs):
+            if cmd[:3] == ["gh", "repo", "view"]:
+                return subprocess.CompletedProcess(cmd, 0, stdout=repo_view_payload, stderr="")
+            if cmd[:3] == ["gh", "pr", "list"]:
+                return subprocess.CompletedProcess(cmd, 0, stdout=pr_list_payload, stderr="")
+            return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="not mocked in this fixture")
+
+        app_cls = make_app()
+        app = app_cls(fx.config_dir, fx.data_dir, local_base=Path(fx.tmp.name))
+        with mock.patch("github_repo_push.github_api.subprocess.run", side_effect=fake_run):
+            async with app.run_test(size=(160, 40)) as pilot:
+                await app.workers.wait_for_complete()
+                await pilot.pause()
+                await pilot.press("o")
+                await pilot.pause()
+                self.assertEqual(app.screen.__class__.__name__, "PullRequestsScreen")
+                await pilot.press("escape")
+                await pilot.pause()
+                self.assertNotEqual(app.screen.__class__.__name__, "PullRequestsScreen")
+        fx.tmp.cleanup()
+
+    async def test_open_prs_binding_reports_no_data_yet_when_no_remote(self):
+        # No gh mock: the fixture's repo doesn't exist on GitHub, so gh repo view fails
+        # fast (same real-network tolerance test_loads_row_with_push_columns already
+        # relies on), remote_exists is False, and PR fetch is never attempted.
+        fx = Fixture()
+        app_cls = make_app()
+        app = app_cls(fx.config_dir, fx.data_dir, local_base=Path(fx.tmp.name))
+        async with app.run_test(size=(160, 40)) as pilot:
+            await app.workers.wait_for_complete()
+            await pilot.pause()
+            await pilot.press("o")
+            await pilot.pause()
+            self.assertNotEqual(app.screen.__class__.__name__, "PullRequestsScreen")
         fx.tmp.cleanup()
 
     async def test_in_tui_push_reaches_bare_origin_and_audits(self):

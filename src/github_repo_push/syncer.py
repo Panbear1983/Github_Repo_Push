@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -28,6 +28,32 @@ class PushResult:
     success: bool
     record: PushRecord
     message: str
+
+
+@dataclass
+class PullResult:
+    success: bool
+    message: str
+    commits_pulled: int = 0
+
+
+@dataclass
+class ReconcileReport:
+    """Diff between the registry and the live GitHub account.
+
+    This is the check that would have caught Family_Budget_Agent sitting in
+    repos.yaml as UNTRACKED after it was deleted outside ghrp: `orphaned` is
+    a registered repo whose remote no longer exists, `unregistered` is a real
+    GitHub repo nobody ever added to repos.yaml.
+    """
+
+    orphaned: list[str] = field(default_factory=list)
+    unregistered: list[str] = field(default_factory=list)
+    error: Optional[str] = None
+
+    @property
+    def is_clean(self) -> bool:
+        return not self.orphaned and not self.unregistered and not self.error
 
 
 @dataclass
@@ -343,6 +369,86 @@ class Syncer:
                 entry.error = str(e)
             entries.append(entry)
         return entries
+
+    def pull_repo(self, config: RepoConfig) -> PullResult:
+        """Bring a repo's local branch up to date with origin — fast-forward only.
+
+        Mirrors push_repo's caution in the opposite direction: refuses outright
+        on a dirty worktree (would risk clobbering uncommitted edits on merge)
+        and on anything that isn't a clean ancestor relationship (DIVERGED),
+        rather than ever creating a merge commit or force-touching local state.
+        """
+        local_path = config.get_full_local_path()
+        if not local_path.exists():
+            return PullResult(False, f"Local path does not exist: {local_path}")
+
+        git_repo = GitRepo(local_path)
+        if not git_repo.is_repo():
+            return PullResult(False, "Not a git repo yet — nothing to pull.")
+
+        sync = git_repo.sync_status("origin", config.push_branch)
+        if sync == SyncStatus.SYNCED:
+            return PullResult(True, "Already up to date.")
+        if sync == SyncStatus.AHEAD:
+            return PullResult(True, "Local is ahead of origin — nothing to pull.")
+        if sync == SyncStatus.UNTRACKED:
+            return PullResult(False, "No local commits yet on this branch — nothing to fast-forward.")
+        if sync == SyncStatus.DIVERGED:
+            return PullResult(
+                False,
+                "Local and origin have both changed (diverged) — a fast-forward "
+                "isn't possible here; this needs a manual merge.",
+            )
+
+        # BEHIND: the only case a fast-forward can actually happen.
+        if git_repo.has_uncommitted_changes():
+            return PullResult(
+                False,
+                "Working tree has uncommitted changes — commit or stash them first "
+                "so pulling can't clobber anything.",
+            )
+        incoming = self._count_incoming(git_repo, config.push_branch)
+        try:
+            git_repo.merge_ff_only("origin", config.push_branch)
+        except RuntimeError as exc:
+            return PullResult(False, f"Pull failed: {exc}")
+        return PullResult(True, f"Pulled {incoming} commit{'s' if incoming != 1 else ''} from origin.",
+                          commits_pulled=incoming)
+
+    def _count_incoming(self, git_repo: GitRepo, branch: str) -> int:
+        """How many commits origin/<branch> has that the local branch does not."""
+        result = git_repo.run(["rev-list", "--count", f"HEAD..origin/{branch}"], check=False)
+        try:
+            return int(result.stdout.strip())
+        except (ValueError, AttributeError):
+            return 0
+
+    def reconcile(self) -> ReconcileReport:
+        """Compare the registry against the live GitHub account.
+
+        Read-only: never touches repos.yaml or GitHub. A single `gh repo list`
+        call, then a name diff against the registry — this is the piece that
+        was missing before, which is why a repo deleted outside ghrp just sat
+        there as UNTRACKED instead of ever being flagged on its own.
+        """
+        live_repos = self.github_api.list_repos()
+        if not live_repos:
+            # `list_repos` returns [] both for "account genuinely has zero
+            # repos" and "the gh call failed" — Peter's account is never
+            # empty, so treat this as inconclusive rather than reporting
+            # every registered repo as deleted.
+            return ReconcileReport(error="Could not reach GitHub (gh call returned no repos) — skipped reconcile check")
+
+        live_names = {r.name for r in live_repos}
+        registered_names = {c.repo_name for c in self.registry.repos}
+
+        orphaned = sorted(
+            c.name for c in self.registry.repos
+            if c.enabled and c.owner == self.github_api.owner and c.repo_name not in live_names
+        )
+        unregistered = sorted(live_names - registered_names)
+
+        return ReconcileReport(orphaned=orphaned, unregistered=unregistered)
 
     def _count_outgoing(self, git_repo: GitRepo, branch: str) -> int:
         """How many commits the local branch has that origin/<branch> does not."""

@@ -83,6 +83,23 @@ def send(text: str, data_dir: Path) -> bool:
         return False
 
 
+def format_reconcile(report) -> str:
+    """Render a ReconcileReport as plain text."""
+    if report.error:
+        return f"Registry check: {report.error}"
+    if report.is_clean:
+        return "Registry matches your GitHub account — nothing orphaned, nothing unregistered."
+
+    lines = ["Registry check:"]
+    if report.orphaned:
+        lines.append("  Gone from GitHub but still in ghrp's list:")
+        lines += [f"    - {name}" for name in report.orphaned]
+    if report.unregistered:
+        lines.append("  On GitHub but not in ghrp's list:")
+        lines += [f"    - {name}" for name in report.unregistered]
+    return "\n".join(lines)
+
+
 def format_report(entries, pushed_only: bool = False) -> str:
     """Render drift entries as a plain-text Telegram message."""
     if not entries:

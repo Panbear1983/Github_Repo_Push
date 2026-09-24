@@ -127,6 +127,12 @@ class GitRepo:
     def fetch(self, remote: str = "origin") -> None:
         self.run(["fetch", remote], check=False)
 
+    def merge_ff_only(self, remote: str = "origin", branch: str = "main") -> None:
+        """Fast-forward the working branch onto remote/branch. Refuses (raises)
+        on anything that isn't a clean fast-forward — never creates a merge
+        commit, never touches uncommitted changes."""
+        self.run(["merge", "--ff-only", f"{remote}/{branch}"])
+
     def get_size_kb(self) -> int:
         """Get repo size in KB (approximate)."""
         result = self.run(["count-objects", "-v"], check=False)

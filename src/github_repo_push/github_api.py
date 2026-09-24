@@ -11,6 +11,17 @@ from github_repo_push.models import RepoConfig, RepoVisibility
 
 
 @dataclass
+class PullRequestInfo:
+    number: int
+    title: str
+    author: str
+    url: str
+    created_at: Optional[datetime]
+    head_branch: str
+    is_draft: bool
+
+
+@dataclass
 class RemoteRepoInfo:
     name: str
     full_name: str
@@ -32,13 +43,20 @@ class GitHubAPI:
     def __init__(self, owner: str = "Panbear1983"):
         self.owner = owner
 
-    def _run_gh(self, args: list[str], check: bool = True) -> subprocess.CompletedProcess:
-        result = subprocess.run(
-            ["gh"] + args,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+    def _run_gh(self, args: list[str], check: bool = True, timeout: Optional[float] = None) -> subprocess.CompletedProcess:
+        try:
+            result = subprocess.run(
+                ["gh"] + args,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired:
+            result = subprocess.CompletedProcess(
+                args=["gh"] + args, returncode=124, stdout="",
+                stderr=f"gh command timed out after {timeout}s",
+            )
         if check and result.returncode != 0:
             stderr = (result.stderr or "").strip()
             stdout = (result.stdout or "").strip()
@@ -75,6 +93,29 @@ class GitHubAPI:
             topics=data.get("repositoryTopics", []),
             primary_language=data.get("primaryLanguage", {}).get("name") if data.get("primaryLanguage") else None,
         )
+
+    def list_open_prs(self, repo_name: str, limit: int = 50, timeout: Optional[float] = 10.0) -> list[PullRequestInfo]:
+        """Open pull requests against this repo. Raises RuntimeError on gh failure/timeout —
+        unlike get_repo/list_repos, "no PRs" and "couldn't check" must not look the same."""
+        result = self._run_gh(
+            ["pr", "list", "--repo", f"{self.owner}/{repo_name}", "--state", "open",
+             "--limit", str(limit), "--json",
+             "number,title,author,url,createdAt,headRefName,isDraft"],
+            check=True, timeout=timeout,
+        )
+        data = json.loads(result.stdout)
+        return [
+            PullRequestInfo(
+                number=p["number"],
+                title=p["title"],
+                author=p.get("author", {}).get("login", "unknown"),
+                url=p.get("url", ""),
+                created_at=datetime.fromisoformat(p["createdAt"].replace("Z", "+00:00")) if p.get("createdAt") else None,
+                head_branch=p.get("headRefName", ""),
+                is_draft=p.get("isDraft", False),
+            )
+            for p in data
+        ]
 
     def list_repos(self, limit: int = 200) -> list[RemoteRepoInfo]:
         result = self._run_gh(

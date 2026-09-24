@@ -173,25 +173,6 @@ repos:
   cron_enabled: false
   visibility: public
   enabled: true
-- name: Family_Budget_Agent
-  local_path: /Users/peter/GitHub/Family_Budget_Agent
-  remote: Panbear1983/Family_Budget_Agent
-  default_branch: main
-  push_branch: main
-  protected_branches:
-  - main
-  - master
-  require_pr: false
-  ignore_patterns: []
-  profile_section: Featured Security Work
-  profile_featured: false
-  profile_description: AI-powered bilingual family budget management tool
-  profile_ai_prompt: null
-  tags: []
-  cron_schedule: null
-  cron_enabled: false
-  visibility: private
-  enabled: true
 - name: Github_Repo_Push
   local_path: /Users/peter/GitHub/Github_Repo_Push
   remote: Panbear1983/Github_Repo_Push
@@ -314,4 +295,43 @@ repos:
   cron_schedule: null
   cron_enabled: false
   visibility: public
+  enabled: true
+- name: Family_Budget_Dashboard
+  local_path: /Users/peter/GitHub/Family_Budget_Dashboard
+  remote: Panbear1983/Family_Budget_Dashboard
+  default_branch: main
+  push_branch: main
+  protected_branches:
+  - main
+  - master
+  require_pr: false
+  ignore_patterns: []
+  profile_section: Other Projects
+  profile_featured: false
+  profile_description: AI-powered bilingual family budget management tool (Textual
+    TUI + Telegram bot)
+  profile_ai_prompt: null
+  tags: []
+  cron_schedule: null
+  cron_enabled: false
+  visibility: private
+  enabled: true
+- name: Claude_Voice_Defaults
+  local_path: /Users/peter/GitHub/Claude_Voice_Defaults
+  remote: Panbear1983/Claude_Voice_Defaults
+  default_branch: main
+  push_branch: main
+  protected_branches:
+  - main
+  - master
+  require_pr: false
+  ignore_patterns: []
+  profile_section: Other Projects
+  profile_featured: false
+  profile_description: ''
+  profile_ai_prompt: null
+  tags: []
+  cron_schedule: null
+  cron_enabled: false
+  visibility: private
   enabled: true

@@ -90,6 +90,30 @@ def push(repo_name, dry_run, message, force, skip_profile, update_profile):
 
 
 @cli.command()
+@click.argument("repo_name")
+def pull(repo_name):
+    """Pull a single repository — fast-forward only.
+
+    Refuses on a dirty worktree or on anything that isn't a clean
+    fast-forward (diverged history); never force-merges, never touches
+    uncommitted changes.
+    """
+    registry = Registry(CONFIG_DIR)
+    registry.load()
+    syncer = Syncer(registry, DATA_DIR)
+    config = registry.get_repo(repo_name)
+    if not config:
+        click.echo(f"Error: Repository '{repo_name}' not found in registry.", err=True)
+        raise click.Abort()
+    result = syncer.pull_repo(config)
+    if result.success:
+        click.echo(f"✓ {result.message}")
+    else:
+        click.echo(f"✗ {result.message}", err=True)
+        raise click.Abort()
+
+
+@cli.command()
 @click.option("--dry-run", is_flag=True, help="Show what would be done without making changes.")
 @click.option("--message", "-m", help="Commit message to use.")
 @click.option("--only-changed", is_flag=True, help="Only push repositories that have changes.")
@@ -114,12 +138,76 @@ def push_all(dry_run, message, only_changed, commit, parallel):
 
 
 @cli.command()
-def profile_preview():
-    """Preview the profile README without pushing."""
+@click.argument("repo_name", required=False)
+@click.option("--json", "as_json", is_flag=True, help="Output raw JSON instead of a table.")
+def prs(repo_name, as_json):
+    """List open pull requests on your registered repos (read-only, on-demand).
+
+    Not part of the daily drift report — run this manually whenever you want
+    to check for PRs opened by others against your repos.
+    """
     registry = Registry(CONFIG_DIR)
     registry.load()
+    syncer = Syncer(registry, DATA_DIR)
+
+    if repo_name:
+        config = registry.get_repo(repo_name)
+        if not config:
+            click.echo(f"Error: Repository '{repo_name}' not found in registry.", err=True)
+            raise click.Abort()
+        targets = [config]
+    else:
+        targets = [c for c in registry.repos if c.enabled]
+
+    results = {}
+    had_error = False
+    for config in targets:
+        try:
+            results[config.name] = syncer.github_api.list_open_prs(config.repo_name)
+        except Exception as exc:
+            results[config.name] = None
+            had_error = True
+            click.echo(f"{config.name}: error fetching PRs — {exc}", err=True)
+
+    if as_json:
+        import json as _json
+        click.echo(_json.dumps({
+            name: ([{"number": pr.number, "title": pr.title, "author": pr.author,
+                      "url": pr.url, "branch": pr.head_branch, "draft": pr.is_draft}
+                     for pr in prs] if prs is not None else None)
+            for name, prs in results.items()
+        }, indent=2))
+    else:
+        total = 0
+        for name, prs in results.items():
+            if not prs:
+                continue
+            click.echo(f"{name}:")
+            for pr in prs:
+                draft = " (draft)" if pr.is_draft else ""
+                click.echo(f"  #{pr.number} {pr.title}{draft} — by {pr.author} [{pr.head_branch}]")
+                click.echo(f"      {pr.url}")
+            total += len(prs)
+        if total == 0 and not had_error:
+            scope = f"on {repo_name}" if repo_name else "on any registered repo"
+            click.echo(f"No open pull requests {scope}.")
+
+    if had_error:
+        raise SystemExit(1)
+
+
+@cli.command()
+def profile_preview():
+    """Preview the profile README without pushing.
+
+    Touches the network: public repos' badges (pushed date, open PRs) are
+    fetched live, so this is no longer purely local/instant.
+    """
+    registry = Registry(CONFIG_DIR)
+    registry.load()
+    syncer = Syncer(registry, DATA_DIR)
     from github_repo_push.profile_readme import preview_profile_readme
-    content = preview_profile_readme(registry)
+    content = preview_profile_readme(registry, syncer)
     click.echo(content, nl=False)
 
 
@@ -129,8 +217,9 @@ def profile_update(push):
     """Update the profile README."""
     registry = Registry(CONFIG_DIR)
     registry.load()
+    syncer = Syncer(registry, DATA_DIR)
     from github_repo_push.profile_readme import update_profile_readme
-    success, message = update_profile_readme(registry, dry_run=not push)
+    success, message = update_profile_readme(registry, syncer, dry_run=not push)
     if success:
         click.echo(f"✓ {message}")
         if push:
@@ -240,8 +329,10 @@ def dashboard():
     """Launch the Textual TUI control panel.
 
     Rows stream in as repo states arrive; key bindings push and add repos
-    through the same guarded Syncer path as the CLI (p = push, a = add,
-    r = refresh, q = quit).
+    through the same guarded Syncer path as the CLI (p = push, u = pull
+    (fast-forward only), a = add, enter = expand/collapse a repo's folders
+    or reveal a file in Finder, / = search every repo for a name,
+    o = open PRs, r = refresh, q = quit).
     """
     try:
         import textual  # noqa: F401
@@ -265,7 +356,7 @@ def drift(dry_run, no_push, no_notify):
     repos whose local branch is AHEAD of origin get pushed, and dirty worktrees
     are reported, not staged. BEHIND/DIVERGED repos are reported, never forced.
     """
-    from github_repo_push.notify import format_report, send
+    from github_repo_push.notify import format_report, format_reconcile, send
 
     registry = Registry(CONFIG_DIR)
     registry.load()
@@ -273,10 +364,16 @@ def drift(dry_run, no_push, no_notify):
 
     entries = syncer.drift_sweep(dry_run=dry_run, push=not no_push)
     report = format_report(entries)
-    click.echo(report)
+
+    # Registry-vs-GitHub check rides along on every drift run so a repo
+    # deleted or created outside ghrp gets flagged here automatically,
+    # instead of only surfacing later as a confusing UNTRACKED row.
+    reconcile_report = syncer.reconcile()
+    full_report = report + "\n\n" + format_reconcile(reconcile_report)
+    click.echo(full_report)
 
     if not no_notify and not dry_run:
-        if send(report, DATA_DIR):
+        if send(full_report, DATA_DIR):
             click.echo("\nTelegram report sent.")
         else:
             click.echo("\nTelegram not configured (set GHRP_TELEGRAM_BOT_TOKEN / "
@@ -284,6 +381,44 @@ def drift(dry_run, no_push, no_notify):
 
     failures = [e for e in entries if e.error]
     if failures:
+        raise SystemExit(1)
+
+
+@cli.command()
+@click.option("--json", "as_json", is_flag=True, help="Output raw JSON instead of a plain report.")
+@click.option("--prune", is_flag=True, help="Remove orphaned entries (repo gone on GitHub) from the registry.")
+def reconcile(as_json, prune):
+    """Compare the registry against your live GitHub account.
+
+    Read-only by default. Flags two things `ghrp` could not see on its own
+    before: a registered repo whose GitHub remote is gone (orphaned — e.g. it
+    was deleted outside ghrp), and a real repo on your account that was never
+    added to the registry (unregistered), so it never gets included in
+    push-all/drift at all.
+    """
+    from github_repo_push.notify import format_reconcile
+
+    registry = Registry(CONFIG_DIR)
+    registry.load()
+    syncer = Syncer(registry, DATA_DIR)
+    result = syncer.reconcile()
+
+    if as_json:
+        import json as _json
+        click.echo(_json.dumps(
+            {"orphaned": result.orphaned, "unregistered": result.unregistered, "error": result.error},
+            indent=2,
+        ))
+    else:
+        click.echo(format_reconcile(result))
+
+    if prune and result.orphaned:
+        for name in result.orphaned:
+            registry.remove_repo(name)
+        click.echo(f"\nRemoved {len(result.orphaned)} orphaned "
+                   f"entr{'y' if len(result.orphaned) == 1 else 'ies'} from {registry.repos_file}")
+
+    if result.error or (result.orphaned and not prune):
         raise SystemExit(1)
 
 
