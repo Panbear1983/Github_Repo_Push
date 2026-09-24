@@ -335,3 +335,60 @@ repos:
   cron_enabled: false
   visibility: private
   enabled: true
+- name: Investment_Strategy_Research_2026
+  local_path: /Users/peter/GitHub/Investment_Strategy_Research_2026
+  remote: Panbear1983/Investment_Strategy_Research_2026
+  default_branch: main
+  push_branch: main
+  protected_branches:
+  - main
+  - master
+  require_pr: false
+  ignore_patterns: []
+  profile_section: Other Projects
+  profile_featured: false
+  profile_description: null
+  profile_ai_prompt: null
+  tags: []
+  cron_schedule: null
+  cron_enabled: false
+  visibility: private
+  enabled: true
+- name: OSHA30_Incident_Zero
+  local_path: /Users/peter/GitHub/OSHA 30 Cert.
+  remote: Panbear1983/OSHA30_Incident_Zero
+  default_branch: main
+  push_branch: main
+  protected_branches:
+  - main
+  - master
+  require_pr: false
+  ignore_patterns: []
+  profile_section: Other Projects
+  profile_featured: false
+  profile_description: null
+  profile_ai_prompt: null
+  tags: []
+  cron_schedule: null
+  cron_enabled: false
+  visibility: public
+  enabled: true
+- name: automated-media-pipeline
+  local_path: /Users/peter/GitHub/automated-media-pipeline
+  remote: Panbear1983/automated-media-pipeline
+  default_branch: master
+  push_branch: master
+  protected_branches:
+  - main
+  - master
+  require_pr: false
+  ignore_patterns: []
+  profile_section: Other Projects
+  profile_featured: false
+  profile_description: null
+  profile_ai_prompt: null
+  tags: []
+  cron_schedule: null
+  cron_enabled: false
+  visibility: private
+  enabled: false
