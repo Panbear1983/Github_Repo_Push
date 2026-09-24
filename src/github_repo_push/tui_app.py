@@ -439,6 +439,7 @@ def make_app():
             if self._loading_active:
                 self._log_line("Refresh already in progress.")
                 return
+            self.registry.load()  # picks up repos added to the config since launch
             self._loading_active = True
             self._expanded.clear()
             table = self.query_one(DataTable)

@@ -111,6 +111,43 @@ class DashboardPilotTests(unittest.IsolatedAsyncioTestCase):
             self.assertNotEqual(app.screen.__class__.__name__, "ConfirmPushScreen")
         fx.tmp.cleanup()
 
+    async def test_refresh_picks_up_a_repo_registered_after_launch(self):
+        # Peter's real scenario 2026-09-24: a repo got added to repos.yaml
+        # (by a CLI script, not the TUI's own 'a' flow) while the dashboard
+        # was already running elsewhere. Refresh must notice it, not just
+        # re-check the repos it already knew about at launch.
+        from textual.widgets import DataTable
+
+        fx = Fixture()
+        app_cls = make_app()
+        app = app_cls(fx.config_dir, fx.data_dir, local_base=Path(fx.tmp.name))
+        async with app.run_test(size=(160, 40)) as pilot:
+            await app.workers.wait_for_complete()
+            await pilot.pause()
+            table = app.query_one(DataTable)
+            self.assertEqual(table.row_count, 1)
+
+            second = Path(fx.tmp.name) / "second_repo"
+            second.mkdir()
+            _git(second, "init", "-qb", "main")
+            data = yaml.safe_load((fx.config_dir / "repos.yaml").read_text())
+            data["repos"].append({
+                "name": "second_repo",
+                "local_path": str(second),
+                "remote": "Panbear1983/second_repo",
+                "default_branch": "main",
+                "push_branch": "main",
+                "visibility": "private",
+            })
+            (fx.config_dir / "repos.yaml").write_text(yaml.dump(data))
+
+            await pilot.press("r")
+            await app.workers.wait_for_complete()
+            await pilot.pause()
+            self.assertEqual(table.row_count, 2)
+            self.assertIn("second_repo", {str(key.value) for key in table.rows.keys()})
+        fx.tmp.cleanup()
+
     async def test_add_modal_opens_and_escape_closes(self):
         fx = Fixture()
         app_cls = make_app()
