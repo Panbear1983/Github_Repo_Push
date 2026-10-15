@@ -413,5 +413,5 @@ repos:
   tags: []
   cron_schedule: null
   cron_enabled: false
-  visibility: private
+  visibility: public
   enabled: true
