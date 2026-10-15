@@ -449,6 +449,12 @@ def drift(dry_run, no_push, no_notify):
     # instead of only surfacing later as a confusing UNTRACKED row.
     reconcile_report = syncer.reconcile()
     full_report = report + "\n\n" + format_reconcile(reconcile_report)
+
+    # Screenshot drafts: retaken only for repos whose committed content changed,
+    # and only ever HELD for approval — this unattended job never publishes them.
+    shots_line = _refresh_screenshot_drafts(registry, capture=not dry_run)
+    if shots_line:
+        full_report += "\n\n" + shots_line
     click.echo(full_report)
 
     if not no_notify and not dry_run:
@@ -499,6 +505,102 @@ def reconcile(as_json, prune):
 
     if result.error or (result.orphaned and not prune):
         raise SystemExit(1)
+
+
+def _refresh_screenshot_drafts(registry, capture: bool = True) -> str:
+    from github_repo_push import screenshots
+
+    for config in registry.repos:
+        if not config.enabled or not screenshots.has_scenes(config):
+            continue
+        if capture:
+            result = screenshots.refresh(config, DATA_DIR)
+            if result.status == "error":
+                click.echo(f"screenshots: {config.name}: {result.message}", err=True)
+    waiting = screenshots.pending(DATA_DIR)
+    if not waiting:
+        return ""
+    names = ", ".join(waiting)
+    return f"New README pictures waiting for your approval (dashboard key s): {names}"
+
+
+@cli.group()
+def screenshots():
+    """README screenshots taken from each repo's dashboard on demo data."""
+
+
+@screenshots.command("refresh")
+@click.argument("repo_name", required=False)
+@click.option("--force", is_flag=True, help="Retake even if nothing changed since the last pictures.")
+def screenshots_refresh(repo_name, force):
+    """Take new pictures (held as drafts, never published here)."""
+    from github_repo_push import screenshots as shots
+
+    registry = Registry(CONFIG_DIR)
+    registry.load()
+    targets = [registry.get_repo(repo_name)] if repo_name else [c for c in registry.repos if c.enabled]
+    if repo_name and targets[0] is None:
+        click.echo(f"Error: Repository '{repo_name}' not found in registry.", err=True)
+        raise click.Abort()
+    failed = False
+    for config in targets:
+        result = shots.refresh(config, DATA_DIR, force=force)
+        if result.status == "no-scenes" and not repo_name:
+            continue
+        click.echo(f"{config.name}: {result.status}" + (f" — {result.message}" if result.message else ""))
+        failed |= result.status == "error"
+    if failed:
+        raise SystemExit(1)
+
+
+@screenshots.command("status")
+def screenshots_status():
+    """README facts per repo, plus pictures waiting for approval."""
+    from github_repo_push import screenshots as shots
+
+    registry = Registry(CONFIG_DIR)
+    registry.load()
+    for config in registry.repos:
+        if not config.enabled or not config.get_full_local_path().exists():
+            continue
+        st = shots.readme_stats(config, DATA_DIR)
+        bits = [f"{st.words} words" if st.exists else "no README",
+                f"updated {st.last_updated}" if st.last_updated else "never committed"]
+        if st.placeholder:
+            bits.append("PLACEHOLDER text")
+        bits.append(f"{st.published_pictures} pictures")
+        if st.pending_pictures:
+            bits.append(f"{st.pending_pictures} WAITING for approval")
+        if not st.has_scenes:
+            bits.append("no screenshot setup")
+        click.echo(f"{config.name}: " + " · ".join(bits))
+
+
+@screenshots.command("approve")
+@click.argument("repo_name")
+def screenshots_approve(repo_name):
+    """Publish a repo's waiting pictures into its README and push."""
+    from github_repo_push import screenshots as shots
+
+    registry = Registry(CONFIG_DIR)
+    registry.load()
+    config = registry.get_repo(repo_name)
+    if not config:
+        click.echo(f"Error: Repository '{repo_name}' not found in registry.", err=True)
+        raise click.Abort()
+    ok, message = shots.approve(config, DATA_DIR, Syncer(registry, DATA_DIR))
+    click.echo(("✓ " if ok else "✗ ") + message)
+    if not ok:
+        raise SystemExit(1)
+
+
+@screenshots.command("discard")
+@click.argument("repo_name")
+def screenshots_discard(repo_name):
+    """Throw away a repo's waiting pictures."""
+    from github_repo_push import screenshots as shots
+
+    click.echo("Discarded." if shots.discard(DATA_DIR, repo_name) else "Nothing was waiting.")
 
 
 @cli.group()

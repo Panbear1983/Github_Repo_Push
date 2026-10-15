@@ -55,6 +55,13 @@ python3 -m github_repo_push.cli profile-update --push
 | `profile-preview` | Render the profile README to stdout |
 | `profile-update [--push]` | Regenerate (and optionally push) the profile README |
 | `dashboard` | Launch the Textual TUI control panel |
+| `pull <repo>` | Fast-forward a repo from GitHub (refuses on dirty or diverged) |
+| `reconcile [--prune]` | Compare the registry with the live GitHub account |
+| `profile-suggest <repo> [--apply]` | Claude drafts the repo's profile-page line from its own README |
+| `profile-intro [--file f]` | Show or replace the hand-written profile intro |
+| `screenshots refresh [repo] [--force]` | Take README pictures from a repo's dashboard on demo data (held as drafts) |
+| `screenshots status` | README facts per repo and pictures waiting for approval |
+| `screenshots approve <repo>` / `discard <repo>` | Publish or throw away a repo's waiting pictures |
 
 ### Dashboard
 
@@ -66,13 +73,32 @@ tool's audit log). Key bindings:
 | Key | Action |
 |-----|--------|
 | `p` | Push the selected repo — confirm modal shows what will be committed/skipped, with a Dry-run option |
+| `u` | Pull the selected repo (fast-forward only) |
 | `a` | Add a repo to GitHub without the browser: pick an unregistered local folder (or type a path), choose visibility, and it registers, `gh repo create`s, and pushes |
-| `r` | Refresh all rows |
+| `o` | Open pull requests on the selected repo |
+| `i` | Draft the selected repo's profile-page description with Claude; edit, then apply |
+| `e` | Edit the protected intro at the top of the profile page |
+| `s` | README screenshots: README facts, pictures waiting for approval (open / approve + push / discard), or take new ones |
+| `enter` | Expand a repo's folders in place, or reveal a file in Finder |
+| `/` | Search file and folder names across every repo |
+| `r` | Refresh all rows (also re-reads the registry) |
 | `q` | Quit |
 
 All dashboard actions run the same `Syncer` path as the CLI, so ignore
 patterns, the secret scan, and branch protections always apply; outcomes are
 appended to the audit log and shown in the log pane.
+
+### README screenshots
+
+A repo opts in by adding `.ghrp/screenshots.py`, which drives that repo's own
+dashboard on **demo data only** and saves one picture per scene (this repo's
+script is the reference). The engine turns them into PNGs and holds them as
+drafts outside the repo. The daily drift job retakes pictures only when a
+repo's committed content changed, keeps them only if they differ from what's
+published, and lists anything waiting in its report — it never publishes.
+Approving (dashboard `s`, or `screenshots approve`) writes `docs/screenshots/`
+and a marked block in README.md, commits exactly those paths, and pushes
+through the normal guarded path. Nothing outside the marked block is touched.
 
 ## Configuration
 
@@ -95,6 +121,7 @@ Overrides: `GHRP_CONFIG_DIR`, `GHRP_DATA_DIR`.
 - **No blind fleet commits**: `push-all` skips dirty worktrees unless `--commit` is explicit.
 - **Diverged/behind refusal**: pushes are refused when local is behind or diverged unless `--force` (uses `--force-with-lease`).
 - **Profile fidelity**: the generator's output is locked byte-identical to the live profile README by a golden test.
+- **Screenshots wait for approval**: pictures can't be scanned for secrets, so scenes use demo data and nothing is published without an explicit approve.
 
 ## Layout
 
@@ -112,6 +139,10 @@ src/github_repo_push/
   readme_gen.py              # target-repo README generation (ported)
   profile_markdown.py        # surgical profile-entry editor (ported)
   profile_readme.py          # full profile README generation
+  profile_ai.py              # Claude-drafted profile descriptions
+  screenshots.py             # README screenshot engine (drafts, approve, stats)
+  tui_app.py                 # Textual dashboard
+.ghrp/screenshots.py         # this repo's own demo-data screenshot scenes
   dashboard.py               # dashboard data aggregation
 tests/                       # unittest suite incl. profile golden test
 dashboard.sh                 # TUI launcher (PYTHONPATH wrapper)

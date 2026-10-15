@@ -13,6 +13,10 @@ grounded only in its own README — always shown for edit/approval before
 anything is written or pushed, refuses on a private repo,
 e = hand-edit the profile page's own intro zone — the one part of the page
 automatic project-listing updates (push, i) are built to never overwrite,
+s = README screenshots for the selected repo: its README facts, pictures
+waiting for approval (open in Preview / approve + push / discard), or take
+new ones — pictures come from the repo's own dashboard on demo data and are
+never published without approval here,
 enter = expand/collapse a repo's folders in place, or reveal a file in
 Finder, / = search file/folder names across every registered repo,
 r = refresh, q = quit.
@@ -444,6 +448,78 @@ def make_app():
                 return
             self.dismiss(self.query_one("#intro-text", TextArea).text)
 
+    class ScreenshotsScreen(ModalScreen[Optional[str]]):
+        """README facts + waiting pictures for one repo.
+
+        Dismisses "approve" | "discard" | "capture" | None. "Open in Preview"
+        is handled in place. Nothing is published by this screen itself.
+        """
+
+        BINDINGS = [Binding("escape", "cancel", "Close")]
+
+        def action_cancel(self) -> None:
+            self.dismiss(None)
+        DEFAULT_CSS = """
+        ScreenshotsScreen { align: center middle; }
+        ScreenshotsScreen #dialog {
+            width: 100; height: auto; max-height: 85%;
+            border: thick $accent; background: $surface; padding: 1 2;
+        }
+        ScreenshotsScreen .row { height: auto; margin-top: 1; }
+        ScreenshotsScreen Label { width: 100%; }
+        ScreenshotsScreen .shot { color: $text-muted; }
+        ScreenshotsScreen #warn { color: $warning; }
+        ScreenshotsScreen Button { min-width: 14; margin-right: 2; }
+        """
+
+        def __init__(self, repo_name: str, stats, drafts):
+            super().__init__()
+            self._repo_name = repo_name
+            self._stats = stats
+            self._drafts = drafts
+
+        def compose(self) -> ComposeResult:
+            st, drafts = self._stats, self._drafts
+            with Vertical(id="dialog"):
+                yield Label(f"README — {self._repo_name}")
+                if st.exists:
+                    facts = f"{st.words} words · last updated {st.last_updated or 'never committed'}"
+                    facts += f" · {st.published_pictures} picture(s) published"
+                    yield Label(facts)
+                    if st.placeholder:
+                        yield Label("Still the auto-generated placeholder text — worth writing a real one.", id="warn")
+                else:
+                    yield Label("No README yet.", id="warn")
+                if not st.has_scenes:
+                    yield Label("This project has no screenshot setup yet, so no pictures can be taken.")
+                    with Horizontal(classes="row"):
+                        yield Button("Close", id="close")
+                    return
+                if drafts and drafts.shots:
+                    yield Label(f"{len(drafts.shots)} new picture(s) waiting for your approval "
+                                f"(taken {drafts.created_at.replace('T', ' ')}):", classes="row")
+                    for shot in drafts.shots:
+                        yield Label(f"  {shot.name}: {shot.caption}", classes="shot")
+                    with Horizontal(classes="row"):
+                        yield Button("Open in Preview", id="open", variant="primary")
+                        yield Button("Approve + Push", id="approve", variant="warning")
+                        yield Button("Discard", id="discard")
+                        yield Button("Close", id="close")
+                else:
+                    yield Label("No pictures waiting — the README matches the dashboard as of the last check.",
+                                classes="row")
+                    with Horizontal(classes="row"):
+                        yield Button("Take new pictures now", id="capture", variant="primary")
+                        yield Button("Close", id="close")
+
+        def on_button_pressed(self, event: Button.Pressed) -> None:
+            if event.button.id == "open":
+                import subprocess
+
+                subprocess.run(["open", *[shot.png for shot in self._drafts.shots]], check=False)
+                return
+            self.dismiss(None if event.button.id == "close" else event.button.id)
+
     class SearchScreen(ModalScreen[Optional[Path]]):
         """Search file/folder names across every registered repo.
 
@@ -514,6 +590,7 @@ def make_app():
             Binding("o", "show_prs", "Open PRs"),
             Binding("i", "suggest_profile", "AI repo description"),
             Binding("e", "edit_intro", "Edit profile intro"),
+            Binding("s", "screenshots", "Screenshots"),
             Binding("slash", "search", "Search"),
             Binding("r", "refresh", "Refresh"),
             Binding("q", "quit", "Quit"),
@@ -528,6 +605,7 @@ def make_app():
             self.registry = Registry(config_dir)
             self.registry.load()
             self.syncer = Syncer(self.registry, data_dir)
+            self.data_dir = data_dir
             self.local_base = local_base
             self._loading_active = False
             self._pr_cache: dict[str, Optional[list[PullRequestInfo]]] = {}
@@ -599,7 +677,17 @@ def make_app():
             self.sub_title = (
                 f"{len(rows)} repos · updated {datetime.now().strftime('%H:%M:%S')}"
                 f" · routine {self._routine_state()}"
+                f"{self._pictures_waiting()}"
             )
+
+        def _pictures_waiting(self) -> str:
+            try:
+                from github_repo_push.screenshots import pending
+
+                count = len(pending(self.data_dir))
+            except Exception:
+                return ""
+            return f" · {count} with pictures to approve (s)" if count else ""
 
         def _routine_state(self) -> str:
             """Show the real launchd state so the UI reflects what is scheduled."""
@@ -810,6 +898,57 @@ def make_app():
             ok, message = apply_suggestion(self.registry, config, suggestion)
             marker = "✓" if ok else "✗"
             self.call_from_thread(self._log_line, f"{marker} {config.name}: {message}")
+
+        # ---- README screenshots ---------------------------------------------
+
+        def action_screenshots(self) -> None:
+            config = self._selected_repo()
+            if config is None:
+                self._log_line("No repo selected (row not in registry?).")
+                return
+            from github_repo_push.screenshots import load_drafts, readme_stats
+
+            stats = readme_stats(config, self.data_dir)
+            drafts = load_drafts(self.data_dir, config.name)
+            self.push_screen(ScreenshotsScreen(config.name, stats, drafts),
+                             partial(self._on_screenshots_choice, config))
+
+        def _on_screenshots_choice(self, config: RepoConfig, choice: Optional[str]) -> None:
+            if choice == "approve":
+                self._log_line(f"Publishing {config.name}'s pictures…")
+                self.run_worker(partial(self._do_approve_shots, config), thread=True)
+            elif choice == "discard":
+                from github_repo_push.screenshots import discard
+
+                discard(self.data_dir, config.name)
+                self._log_line(f"{config.name}: waiting pictures discarded.")
+                self._update_subtitle_waiting()
+            elif choice == "capture":
+                self._log_line(f"Taking pictures of {config.name}'s dashboard on demo data…")
+                self.run_worker(partial(self._do_capture_shots, config), thread=True)
+
+        def _do_capture_shots(self, config: RepoConfig) -> None:
+            from github_repo_push.screenshots import refresh
+
+            result = refresh(config, self.data_dir, force=True)
+            marker = "✗" if result.status == "error" else "✓"
+            self.call_from_thread(self._log_line, f"{marker} {config.name}: {result.status} — {result.message}")
+            self.call_from_thread(self._update_subtitle_waiting)
+
+        def _do_approve_shots(self, config: RepoConfig) -> None:
+            from github_repo_push.screenshots import approve
+
+            ok, message = approve(config, self.data_dir, self.syncer)
+            self.call_from_thread(self._log_line, f"{'✓' if ok else '✗'} {config.name}: {message}")
+            self.call_from_thread(self._update_subtitle_waiting)
+            if ok:
+                row, prs = build_row(self.syncer, config)
+                self.call_from_thread(self._refresh_row, row)
+
+        def _update_subtitle_waiting(self) -> None:
+            base = self.sub_title.split(" · ")
+            base = [part for part in base if "pictures to approve" not in part]
+            self.sub_title = " · ".join(base) + self._pictures_waiting()
 
         # ---- protected profile intro edit -----------------------------------
         #
