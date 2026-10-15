@@ -8,6 +8,11 @@ Bindings: p = push selected repo (confirm modal with dry-run option),
 u = pull selected repo (fast-forward only — refuses on a dirty worktree or
 diverged history, no confirm modal since it can't do anything destructive),
 a = add/register a local repo and publish it (gh repo create, no browser),
+i = draft a profile-page description for the selected repo via Claude,
+grounded only in its own README — always shown for edit/approval before
+anything is written or pushed, refuses on a private repo,
+e = hand-edit the profile page's own intro zone — the one part of the page
+automatic project-listing updates (push, i) are built to never overwrite,
 enter = expand/collapse a repo's folders in place, or reveal a file in
 Finder, / = search file/folder names across every registered repo,
 r = refresh, q = quit.
@@ -176,7 +181,7 @@ def make_app():
     from textual.binding import Binding
     from textual.containers import Horizontal, Vertical, VerticalScroll
     from textual.screen import ModalScreen
-    from textual.widgets import Button, DataTable, Footer, Header, Input, Label, Log, Select
+    from textual.widgets import Button, DataTable, Footer, Header, Input, Label, Log, Select, TextArea
 
     class ConfirmPushScreen(ModalScreen[Optional[str]]):
         """Confirm modal for pushing one repo. Dismisses 'push' | 'dry' | None."""
@@ -333,6 +338,112 @@ def make_app():
                 }
             )
 
+    class ProfileSuggestionScreen(ModalScreen[Optional[dict]]):
+        """AI-drafted profile entry, always editable before it's ever applied.
+
+        Dismisses {description, section} on Apply, None on Cancel. Nothing is
+        written or pushed by this screen itself — the caller does that only
+        after this returns.
+        """
+
+        BINDINGS = [Binding("escape", "cancel", "Cancel")]
+
+        def action_cancel(self) -> None:
+            self.dismiss(None)
+        DEFAULT_CSS = """
+        ProfileSuggestionScreen { align: center middle; }
+        ProfileSuggestionScreen #dialog {
+            width: 100; height: auto; max-height: 85%;
+            border: thick $accent; background: $surface; padding: 1 2;
+        }
+        ProfileSuggestionScreen .row { height: auto; margin-bottom: 1; }
+        ProfileSuggestionScreen Label { width: 100%; }
+        ProfileSuggestionScreen #note { color: $text-muted; }
+        ProfileSuggestionScreen #new-section-flag { color: $warning; }
+        ProfileSuggestionScreen Button { min-width: 12; margin-right: 2; }
+        """
+
+        def __init__(self, repo_name: str, suggestion):
+            super().__init__()
+            self._repo_name = repo_name
+            self._suggestion = suggestion
+
+        def compose(self) -> ComposeResult:
+            s = self._suggestion
+            with Vertical(id="dialog"):
+                yield Label(f"Profile entry for {self._repo_name}"
+                            + (" — new project" if s.is_new_entry else " — updating existing entry"))
+                with Vertical(classes="row"):
+                    yield Label(f"Currently on the profile page: {s.current_description or '(nothing yet)'}")
+                with Vertical(classes="row"):
+                    yield Label("Description (edit freely before applying):")
+                    yield Input(value=s.description, id="description")
+                with Vertical(classes="row"):
+                    label = f"Section: {s.section}"
+                    if s.is_new_section:
+                        label += "  — this section doesn't exist yet"
+                    yield Label(label, id="new-section-flag" if s.is_new_section else None)
+                    yield Input(value=s.section, id="section")
+                if s.grounding_note:
+                    yield Label(f"Note: {s.grounding_note}", id="note")
+                with Horizontal(classes="row"):
+                    yield Button("Apply + Push", id="apply", variant="warning")
+                    yield Button("Cancel", id="cancel")
+
+        def on_button_pressed(self, event: Button.Pressed) -> None:
+            if event.button.id == "cancel":
+                self.dismiss(None)
+                return
+            self.dismiss({
+                "description": self.query_one("#description", Input).value.strip(),
+                "section": self.query_one("#section", Input).value.strip(),
+            })
+
+    class ProfileIntroScreen(ModalScreen[Optional[str]]):
+        """Free-hand edit of the profile page's protected intro zone.
+
+        Seeded with whatever is actually live right now. Dismisses the edited
+        text on Save, None on Cancel — nothing is published by this screen
+        itself, and nothing outside this zone is touched by it either.
+        """
+
+        BINDINGS = [Binding("escape", "cancel", "Cancel")]
+
+        def action_cancel(self) -> None:
+            self.dismiss(None)
+        DEFAULT_CSS = """
+        ProfileIntroScreen { align: center middle; }
+        ProfileIntroScreen #dialog {
+            width: 110; height: 40;
+            border: thick $accent; background: $surface; padding: 1 2;
+        }
+        ProfileIntroScreen #hint { height: auto; margin-bottom: 1; }
+        ProfileIntroScreen TextArea { height: 1fr; margin-bottom: 1; }
+        ProfileIntroScreen Button { min-width: 14; margin-right: 2; }
+        """
+
+        def __init__(self, current_text: str):
+            super().__init__()
+            self._current_text = current_text
+
+        def compose(self) -> ComposeResult:
+            with Vertical(id="dialog"):
+                yield Label(
+                    "Edit your profile page's intro. This part is always yours — automatic "
+                    "project-listing updates never touch it.",
+                    id="hint",
+                )
+                yield TextArea(self._current_text, id="intro-text")
+                with Horizontal(classes="row"):
+                    yield Button("Save + Push", id="save", variant="warning")
+                    yield Button("Cancel", id="cancel")
+
+        def on_button_pressed(self, event: Button.Pressed) -> None:
+            if event.button.id == "cancel":
+                self.dismiss(None)
+                return
+            self.dismiss(self.query_one("#intro-text", TextArea).text)
+
     class SearchScreen(ModalScreen[Optional[Path]]):
         """Search file/folder names across every registered repo.
 
@@ -401,6 +512,8 @@ def make_app():
             Binding("u", "pull_repo", "Pull repo"),
             Binding("a", "add_repo", "Add repo"),
             Binding("o", "show_prs", "Open PRs"),
+            Binding("i", "suggest_profile", "AI repo description"),
+            Binding("e", "edit_intro", "Edit profile intro"),
             Binding("slash", "search", "Search"),
             Binding("r", "refresh", "Refresh"),
             Binding("q", "quit", "Quit"),
@@ -645,6 +758,93 @@ def make_app():
                 self._log_line(f"No PR data yet for {config.name} — press r to refresh.")
                 return
             self.push_screen(PullRequestsScreen(config.name, self._pr_cache[config.name]))
+
+        # ---- AI profile suggestion -----------------------------------------
+
+        def action_suggest_profile(self) -> None:
+            config = self._selected_repo()
+            if config is None:
+                self._log_line("No repo selected (row not in registry?).")
+                return
+            if config.visibility != "public":
+                self._log_line(f"{config.name} is private — nothing on the public profile page "
+                                "should point at it.")
+                return
+            self._log_line(f"Reading {config.name}'s README and drafting a profile entry…")
+            self.run_worker(partial(self._do_suggest_profile, config), thread=True)
+
+        def _do_suggest_profile(self, config: RepoConfig) -> None:
+            from github_repo_push.profile_ai import suggest_profile_entry
+
+            try:
+                suggestion = suggest_profile_entry(config, self.registry.profile_config, self.syncer.github_api)
+            except Exception as exc:
+                self.call_from_thread(self._log_line, f"✗ {config.name}: {exc}")
+                return
+            self.call_from_thread(
+                self.push_screen,
+                ProfileSuggestionScreen(config.name, suggestion),
+                partial(self._on_profile_suggestion_choice, config),
+            )
+
+        def _on_profile_suggestion_choice(self, config: RepoConfig, choice: Optional[dict]) -> None:
+            if choice is None:
+                self._log_line(f"Profile suggestion for {config.name} discarded.")
+                return
+            from github_repo_push.profile_ai import ProfileSuggestion
+
+            edited = ProfileSuggestion(
+                description=choice["description"],
+                section=choice["section"],
+                is_new_section=choice["section"] not in {s.name for s in self.registry.profile_config.sections},
+                grounding_note="",
+                current_description=None,
+                is_new_entry=False,
+            )
+            self._log_line(f"Applying profile entry for {config.name}…")
+            self.run_worker(partial(self._do_apply_profile, config, edited), thread=True)
+
+        def _do_apply_profile(self, config: RepoConfig, suggestion) -> None:
+            from github_repo_push.profile_ai import apply_suggestion
+
+            ok, message = apply_suggestion(self.registry, config, suggestion)
+            marker = "✓" if ok else "✗"
+            self.call_from_thread(self._log_line, f"{marker} {config.name}: {message}")
+
+        # ---- protected profile intro edit -----------------------------------
+        #
+        # Not per-repo — this edits the hand-written zone at the top of the
+        # profile page itself, which project-listing updates (push, AI
+        # suggestions) are built to never touch. See profile_readme.py's
+        # MANUAL_SECTION markers.
+
+        def action_edit_intro(self) -> None:
+            self._log_line("Fetching the profile page's current intro…")
+            self.run_worker(self._do_fetch_intro, thread=True)
+
+        def _do_fetch_intro(self) -> None:
+            from github_repo_push.profile_readme import fetch_current_manual_section
+
+            try:
+                current_text = fetch_current_manual_section(self.registry)
+            except Exception as exc:
+                self.call_from_thread(self._log_line, f"✗ Could not fetch the current intro: {exc}")
+                return
+            self.call_from_thread(self.push_screen, ProfileIntroScreen(current_text), self._on_intro_choice)
+
+        def _on_intro_choice(self, new_text: Optional[str]) -> None:
+            if new_text is None:
+                self._log_line("Intro edit discarded.")
+                return
+            self._log_line("Publishing the updated intro…")
+            self.run_worker(partial(self._do_set_intro, new_text), thread=True)
+
+        def _do_set_intro(self, new_text: str) -> None:
+            from github_repo_push.profile_readme import set_manual_section
+
+            ok, message = set_manual_section(self.registry, new_text)
+            marker = "✓" if ok else "✗"
+            self.call_from_thread(self._log_line, f"{marker} {message}")
 
         def _on_push_choice(self, config: RepoConfig, choice: Optional[str]) -> None:
             if choice not in ("push", "dry"):

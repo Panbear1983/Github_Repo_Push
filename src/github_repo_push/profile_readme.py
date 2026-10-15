@@ -82,25 +82,60 @@ def build_profile_badges(registry: Registry, syncer: Syncer) -> dict:
     return badges
 
 
-def generate_profile_readme(config: ProfileReadmeConfig, badges: Optional[dict] = None) -> str:
-    """Generate profile README content from config."""
+# Marks the hand-editable zone in the live README. generate_profile_readme()
+# never writes prose inside these markers itself — it only ever preserves
+# whatever is already there (or DEFAULT_MANUAL_SECTION, the first time), so a
+# manual edit made via `ghrp profile-intro` / the TUI's 'e' key can never be
+# silently overwritten by an automatic project-listing update.
+MANUAL_SECTION_START = "<!-- ghrp:manual-start -->"
+MANUAL_SECTION_END = "<!-- ghrp:manual-end -->"
+
+DEFAULT_MANUAL_SECTION = "\n".join([
+    "# Peter W. Pan",
+    "",
+    "**Security operations + automation | Threat hunting | Python, KQL, Microsoft Sentinel & Defender | Local AI | EN / 中文**",
+    "",
+    "I work at the intersection of security operations, workflow automation, and applied AI. I build Python tools and reproducible labs for threat hunting, detection workflows, vulnerability management, and privacy-preserving local analysis.",
+    "",
+    "My goal is practical security engineering: clear analyst workflows, explicit guardrails, measurable results, and automation that supports—rather than replaces—human judgment.",
+    "",
+    "## Current Focus",
+    "",
+    "- Security operations and incident-triage workflows",
+    "- Threat hunting with KQL, Microsoft Sentinel, and Microsoft Defender",
+    "- Python automation for reporting, monitoring, and decision support",
+    "- Vulnerability management and network-security labs",
+    "- Local LLMs, agent isolation, and tool-use guardrails",
+])
+
+
+def extract_manual_section(readme_content: Optional[str]) -> Optional[str]:
+    """Pull the hand-edited text out from between the markers, or None if the
+    markers aren't present (first run, or a README that predates this)."""
+    if not readme_content:
+        return None
+    start = readme_content.find(MANUAL_SECTION_START)
+    end = readme_content.find(MANUAL_SECTION_END)
+    if start == -1 or end == -1 or end < start:
+        return None
+    return readme_content[start + len(MANUAL_SECTION_START):end].strip("\n")
+
+
+def generate_profile_readme(config: ProfileReadmeConfig, badges: Optional[dict] = None,
+                            manual_section: Optional[str] = None) -> str:
+    """Generate profile README content from config.
+
+    `manual_section` is opaque hand-written text (usually lifted straight from
+    the current live file) — it's placed verbatim between the markers, never
+    parsed or regenerated. Falls back to DEFAULT_MANUAL_SECTION only when
+    nothing was supplied at all (e.g. a brand-new profile repo).
+    """
     badges = badges or {}
+    manual_text = manual_section if manual_section is not None else DEFAULT_MANUAL_SECTION
     lines = [
-        "# Peter W. Pan",
-        "",
-        "**Security operations + automation | Threat hunting | Python, KQL, Microsoft Sentinel & Defender | Local AI | EN / 中文**",
-        "",
-        "I work at the intersection of security operations, workflow automation, and applied AI. I build Python tools and reproducible labs for threat hunting, detection workflows, vulnerability management, and privacy-preserving local analysis.",
-        "",
-        "My goal is practical security engineering: clear analyst workflows, explicit guardrails, measurable results, and automation that supports—rather than replaces—human judgment.",
-        "",
-        "## Current Focus",
-        "",
-        "- Security operations and incident-triage workflows",
-        "- Threat hunting with KQL, Microsoft Sentinel, and Microsoft Defender",
-        "- Python automation for reporting, monitoring, and decision support",
-        "- Vulnerability management and network-security labs",
-        "- Local LLMs, agent isolation, and tool-use guardrails",
+        MANUAL_SECTION_START,
+        manual_text.strip("\n"),
+        MANUAL_SECTION_END,
         "",
     ]
 
@@ -138,19 +173,37 @@ def generate_profile_readme(config: ProfileReadmeConfig, badges: Optional[dict] 
     return "\n".join(lines).rstrip() + "\n"
 
 
-def update_profile_readme(registry: Registry, syncer: Syncer, dry_run: bool = False) -> tuple[bool, str]:
-    """Update the profile README repo."""
+def update_profile_readme(
+    registry: Registry,
+    syncer: Optional[Syncer] = None,
+    dry_run: bool = False,
+    manual_override: Optional[str] = None,
+) -> tuple[bool, str]:
+    """Update the profile README repo.
+
+    Always preserves whatever hand-written text currently lives between the
+    manual-section markers on the LIVE page (fetched fresh here, not from any
+    locally cached copy) — this function never regenerates that text itself.
+    Pass `manual_override` only from the explicit "Peter just edited this"
+    path (`set_manual_section`) to replace it; every other caller leaves it
+    None and the live text survives untouched.
+
+    `syncer` is optional — badges (pushed-date, open-PR count) are skipped
+    without one rather than requiring every caller to build a full Syncer
+    just to publish a project-listing or intro change.
+    """
     profile_config = load_profile_config(registry)
-    badges = build_profile_badges(registry, syncer)
-    content = generate_profile_readme(profile_config, badges)
-
-    if dry_run:
-        return True, content
-
-    # Clone profile repo, update README, push
     owner = profile_config.owner
     github_api = get_github_api(owner)
     profile_repo_name = profile_config.profile_repo
+
+    badges = build_profile_badges(registry, syncer) if syncer else {}
+    live_readme = github_api.get_readme(profile_repo_name)
+    manual_text = manual_override if manual_override is not None else extract_manual_section(live_readme)
+    content = generate_profile_readme(profile_config, badges, manual_section=manual_text)
+
+    if dry_run:
+        return True, content
 
     with tempfile.TemporaryDirectory(prefix="github-profile-") as tmp:
         tmp_path = Path(tmp)
@@ -226,4 +279,25 @@ def preview_profile_readme(registry: Registry, syncer: Syncer) -> str:
     """Preview the profile README without pushing. Touches the network (badges)."""
     profile_config = load_profile_config(registry)
     badges = build_profile_badges(registry, syncer)
-    return generate_profile_readme(profile_config, badges)
+    live_readme = syncer.github_api.get_readme(profile_config.profile_repo)
+    manual_text = extract_manual_section(live_readme)
+    return generate_profile_readme(profile_config, badges, manual_section=manual_text)
+
+
+def fetch_current_manual_section(registry: Registry, github_api: Optional[GitHubAPI] = None) -> str:
+    """What's actually live right now — the text to seed an edit screen with."""
+    profile_config = load_profile_config(registry)
+    api = github_api or get_github_api(profile_config.owner)
+    live_readme = api.get_readme(profile_config.profile_repo)
+    return extract_manual_section(live_readme) or DEFAULT_MANUAL_SECTION
+
+
+def set_manual_section(registry: Registry, new_text: str, dry_run: bool = False) -> tuple[bool, str]:
+    """Publish hand-edited intro text through the normal publish path.
+
+    This is the ONLY call site allowed to pass manual_override into
+    update_profile_readme — every other caller (project-listing updates,
+    badge refreshes) always leaves it alone, so a hand edit can never be
+    silently clobbered by an unrelated automatic update.
+    """
+    return update_profile_readme(registry, dry_run=dry_run, manual_override=new_text)

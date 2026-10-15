@@ -1,112 +1,147 @@
-# Profile README configuration.
-# Mirrors the live Panbear1983/Panbear1983 README as of 2026-08-17
-# (snapshot: ~/.hermes/profiles/orchestrator/github_repo_push/data/
-#  profile_readme_live_snapshot_2026-08-17.md).
-# The bio header, Credentials, and Connect blocks are rendered by
-# profile_readme.generate_profile_readme.
-
-owner: "Panbear1983"
-profile_repo: "Panbear1983"
-
+owner: Panbear1983
+profile_repo: Panbear1983
 sections:
-  - name: "Featured Security Work"
-    order: 1
-    level: 2
-    repos: []
-
-  - name: "SOC Automation Research"
-    order: 2
-    level: 3
-    repos:
-      - name: "Multi-Funtion_SOC_Agent_Research"
-        title: "Multi-Function SOC Agent Research"
-        featured: true
-        description: "Research prototypes for AI-assisted alert enrichment, threat detection, analyst workflows, and security monitoring."
-        ai_prompt: "Summarize this repo as a security operations research project with AI-assisted SOC workflows, threat hunting, and Microsoft Sentinel/Defender integration."
-      - name: "Multi-Funtion_SOC_Agent_Research"
-        title: "Agentic SOC Analyst prototype"
-        path: "openAI_Agentic_SOC_Analyst"
-        featured: true
-        description: "Experimental SOC workflow automation with analyst-oriented outputs and local/cloud model support."
-        ai_prompt: "Describe this as an experimental agentic SOC analyst prototype with local/cloud LLM support."
-
-  - name: "Threat Hunting Case Studies"
-    order: 3
-    level: 3
-    preamble: "The following are lab/CTF investigations, not production incident claims:"
-    repos:
-      - name: "Multi-Funtion_SOC_Agent_Research"
-        title: "RDP Password Spray"
-        path: "Threat_Hunting_Projects/(CTF) RDP Password Spray.md"
-        featured: true
-        description: ""
-      - name: "Multi-Funtion_SOC_Agent_Research"
-        title: "Papertrail: Insider HR Tamper"
-        path: "Threat_Hunting_Projects/(CTF) Papertrail.md"
-        featured: true
-        description: ""
-      - name: "Multi-Funtion_SOC_Agent_Research"
-        title: "Lurker Re-emerged"
-        path: "Threat_Hunting_Projects/(CTF) Lurker.md"
-        featured: true
-        description: ""
-      - name: "Multi-Funtion_SOC_Agent_Research"
-        title: "Assistance"
-        path: "Threat_Hunting_Projects/(CTF) Assistance.md"
-        featured: true
-        description: ""
-      - name: "Multi-Funtion_SOC_Agent_Research"
-        title: "Threat Hunt SAGA #1: Port of Entry"
-        path: "Threat_Hunting_Projects/(CTF) Threat Hunt SAGA#1: Port of Entry.md"
-        featured: true
-        description: ""
-      - name: "Multi-Funtion_SOC_Agent_Research"
-        title: "Threat Hunt SAGA #2: Cargo Hold"
-        path: "Threat_Hunting_Projects/(CTF) Threat Hunt SAGA#2: Cargo Hold.md"
-        featured: true
-        description: ""
-
-  - name: "Applied Automation"
-    order: 4
-    level: 2
-    repos:
-      - name: "Kash_Realestate_Property_Database"
-        title: "Kash Real Estate Intelligence Pipeline"
-        featured: true
-        description: "Local-first property research platform with provider ingestion, SQLite entity resolution, flood and financial enrichment, Codex-assisted ranking, a Textual dashboard, and scheduled change digests."
-        ai_prompt: "Describe this as a local-first real estate intelligence pipeline with multi-provider ingestion, entity resolution, enrichment, AI-assisted ranking, and a Textual dashboard."
-      - name: "Financial_Reporting_Bot"
-        title: "Financial Reporting Bot"
-        featured: true
-        description: "Scheduled Taiwan-market reporting pipeline with brokerage imports, technical signals, recovery controls, and Telegram delivery."
-        ai_prompt: "Describe this as an automated Taiwan stock market reporting bot with brokerage CSV imports, technical analysis, and Telegram delivery."
-      - name: "Alpaca_Paper_Trader"
-        title: "Alpaca Paper Trader"
-        featured: true
-        description: "Supervised paper-trading automation with disclosure research, Textual TUI controls, state management, and scheduled reporting."
-        ai_prompt: "Describe this as a supervised Alpaca paper-trading system with disclosure research, strategy controls, Textual TUI, and Telegram reporting."
-      - name: "Github_Repo_Push"
-        title: "Github Repo Push"
-        featured: true
-        description: "Registry-driven repository push manager with ignore-pattern staging, secret-scan guardrails, profile README automation, and a Textual dashboard."
-        ai_prompt: "Describe this as a registry-driven GitHub push manager with safety guardrails, profile README automation, and a Textual dashboard."
-      - name: "gemini-token-status"
-        title: "Gemini Token Status"
-        featured: true
-        description: "Context-window monitoring for Gemini CLI workflows."
-        ai_prompt: "Describe this as a Gemini CLI hook that reports context-window usage for long-running and agentic workflows."
-
-  - name: "Earlier Data and ML Work"
-    order: 5
-    level: 2
-    repos:
-      - name: "Machine_Learning_Projects"
-        title: "Machine Learning Projects"
-        featured: true
-        description: "Computer vision, recommendation, forecasting, and data-analysis projects."
-        ai_prompt: "Describe this as a collection of earlier ML projects covering computer vision, recommendation systems, forecasting, and data analysis."
-
-# AI description generation (future)
+- name: Featured Security Work
+  description: ''
+  order: 1
+  level: 2
+  preamble: ''
+  repos: []
+- name: SOC Automation Research
+  description: ''
+  order: 2
+  level: 3
+  preamble: ''
+  repos:
+  - name: Multi-Funtion_SOC_Agent_Research
+    title: Multi-Function SOC Agent Research
+    path: null
+    featured: true
+    description: Research prototypes for AI-assisted alert enrichment, threat detection,
+      analyst workflows, and security monitoring.
+    ai_prompt: Summarize this repo as a security operations research project with
+      AI-assisted SOC workflows, threat hunting, and Microsoft Sentinel/Defender integration.
+  - name: Multi-Funtion_SOC_Agent_Research
+    title: Agentic SOC Analyst prototype
+    path: openAI_Agentic_SOC_Analyst
+    featured: true
+    description: Experimental SOC workflow automation with analyst-oriented outputs
+      and local/cloud model support.
+    ai_prompt: Describe this as an experimental agentic SOC analyst prototype with
+      local/cloud LLM support.
+- name: Threat Hunting Case Studies
+  description: ''
+  order: 3
+  level: 3
+  preamble: 'The following are lab/CTF investigations, not production incident claims:'
+  repos:
+  - name: Multi-Funtion_SOC_Agent_Research
+    title: RDP Password Spray
+    path: Threat_Hunting_Projects/(CTF) RDP Password Spray.md
+    featured: true
+    description: ''
+    ai_prompt: null
+  - name: Multi-Funtion_SOC_Agent_Research
+    title: 'Papertrail: Insider HR Tamper'
+    path: Threat_Hunting_Projects/(CTF) Papertrail.md
+    featured: true
+    description: ''
+    ai_prompt: null
+  - name: Multi-Funtion_SOC_Agent_Research
+    title: Lurker Re-emerged
+    path: Threat_Hunting_Projects/(CTF) Lurker.md
+    featured: true
+    description: ''
+    ai_prompt: null
+  - name: Multi-Funtion_SOC_Agent_Research
+    title: Assistance
+    path: Threat_Hunting_Projects/(CTF) Assistance.md
+    featured: true
+    description: ''
+    ai_prompt: null
+  - name: Multi-Funtion_SOC_Agent_Research
+    title: 'Threat Hunt SAGA #1: Port of Entry'
+    path: 'Threat_Hunting_Projects/(CTF) Threat Hunt SAGA#1: Port of Entry.md'
+    featured: true
+    description: ''
+    ai_prompt: null
+  - name: Multi-Funtion_SOC_Agent_Research
+    title: 'Threat Hunt SAGA #2: Cargo Hold'
+    path: 'Threat_Hunting_Projects/(CTF) Threat Hunt SAGA#2: Cargo Hold.md'
+    featured: true
+    description: ''
+    ai_prompt: null
+- name: Applied Automation
+  description: ''
+  order: 4
+  level: 2
+  preamble: ''
+  repos:
+  - name: Kash_Realestate_Property_Database
+    title: Kash Real Estate Intelligence Pipeline
+    path: null
+    featured: true
+    description: Local-first property research platform with provider ingestion, SQLite
+      entity resolution, flood and financial enrichment, Codex-assisted ranking, a
+      Textual dashboard, and scheduled change digests.
+    ai_prompt: Describe this as a local-first real estate intelligence pipeline with
+      multi-provider ingestion, entity resolution, enrichment, AI-assisted ranking,
+      and a Textual dashboard.
+  - name: Financial_Reporting_Bot
+    title: Financial Reporting Bot
+    path: null
+    featured: true
+    description: Scheduled Taiwan-market reporting pipeline with brokerage imports,
+      technical signals, recovery controls, and Telegram delivery.
+    ai_prompt: Describe this as an automated Taiwan stock market reporting bot with
+      brokerage CSV imports, technical analysis, and Telegram delivery.
+  - name: Alpaca_Paper_Trader
+    title: Alpaca Paper Trader
+    path: null
+    featured: true
+    description: Supervised paper-trading automation with disclosure research, Textual
+      TUI controls, state management, and scheduled reporting.
+    ai_prompt: Describe this as a supervised Alpaca paper-trading system with disclosure
+      research, strategy controls, Textual TUI, and Telegram reporting.
+  - name: Github_Repo_Push
+    title: Github Repo Push
+    path: null
+    featured: true
+    description: Registry-driven repository push manager with ignore-pattern staging,
+      secret-scan guardrails, profile README automation, and a Textual dashboard.
+    ai_prompt: Describe this as a registry-driven GitHub push manager with safety
+      guardrails, profile README automation, and a Textual dashboard.
+  - name: gemini-token-status
+    title: Gemini Token Status
+    path: null
+    featured: true
+    description: Context-window monitoring for Gemini CLI workflows.
+    ai_prompt: Describe this as a Gemini CLI hook that reports context-window usage
+      for long-running and agentic workflows.
+  - name: Investment_Strategy_Research_2026
+    title: null
+    path: null
+    featured: false
+    description: Self-running research pipeline that keeps a 100,000-company investment
+      database current, rotating across Gemini, Claude, and Codex with per-provider
+      daily budgets and fallback, scheduled maintenance and deep-research batches,
+      Telegram digests and a Q&A bot, and a terminal dashboard for loop status and
+      pause/resume.
+    ai_prompt: null
+- name: Earlier Data and ML Work
+  description: ''
+  order: 5
+  level: 2
+  preamble: ''
+  repos:
+  - name: Machine_Learning_Projects
+    title: Machine Learning Projects
+    path: null
+    featured: true
+    description: Computer vision, recommendation, forecasting, and data-analysis projects.
+    ai_prompt: Describe this as a collection of earlier ML projects covering computer
+      vision, recommendation systems, forecasting, and data analysis.
+template: ''
 ai_enabled: false
-ai_provider: "openai"  # or "anthropic", "local"
-ai_model: "gpt-4o-mini"
+ai_provider: openai
+ai_model: gpt-4o-mini

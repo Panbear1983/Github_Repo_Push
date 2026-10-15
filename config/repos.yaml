@@ -345,14 +345,17 @@ repos:
   - master
   require_pr: false
   ignore_patterns: []
-  profile_section: Other Projects
+  profile_section: Applied Automation
   profile_featured: false
-  profile_description: null
+  profile_description: Self-running research pipeline that keeps a 100,000-company
+    investment database current, rotating across Gemini, Claude, and Codex with per-provider
+    daily budgets and fallback, scheduled maintenance and deep-research batches, Telegram
+    digests and a Q&A bot, and a terminal dashboard for loop status and pause/resume.
   profile_ai_prompt: null
   tags: []
   cron_schedule: null
   cron_enabled: false
-  visibility: private
+  visibility: public
   enabled: true
 - name: OSHA30_Incident_Zero
   local_path: /Users/peter/GitHub/OSHA 30 Cert.

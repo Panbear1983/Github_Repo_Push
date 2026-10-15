@@ -1,8 +1,20 @@
-"""Golden test: the generated profile README must reproduce the live one.
+"""Golden test: generate_profile_readme's default output must stay stable.
 
-The golden file is the live Panbear1983/Panbear1983 README snapshotted
-2026-08-17. If config/profile_readme.yaml is deliberately changed, regenerate
-the golden with:  PYTHONPATH=src python3 -m github_repo_push.cli profile-preview
+Originally pinned to the live Panbear1983/Panbear1983 README (2026-08-17).
+Since 2026-09-24, generate_profile_readme() wraps its intro in
+MANUAL_SECTION_START/END markers (see profile_readme.py) and falls back to
+DEFAULT_MANUAL_SECTION when no live/override text is given — this golden was
+regenerated to match that (the live page hasn't adopted the markers yet, so
+this is what the first real publish under the new format will produce, not a
+snapshot of something already live). If config/profile_readme.yaml or
+DEFAULT_MANUAL_SECTION changes deliberately, regenerate with:
+  PYTHONPATH=src python3 -c "
+  from pathlib import Path
+  from github_repo_push.registry import Registry
+  from github_repo_push.profile_readme import generate_profile_readme
+  registry = Registry(Path('config')); registry.load()
+  Path('tests/data/profile_readme_golden.md').write_text(generate_profile_readme(registry.profile_config))
+  "
 """
 
 import subprocess

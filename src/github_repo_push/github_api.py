@@ -90,7 +90,7 @@ class GitHubAPI:
             ssh_url=data.get("sshUrl", ""),
             stargazers_count=data.get("stargazerCount", 0),
             forks_count=data.get("forkCount", 0),
-            topics=data.get("repositoryTopics", []),
+            topics=data.get("repositoryTopics") or [],
             primary_language=data.get("primaryLanguage", {}).get("name") if data.get("primaryLanguage") else None,
         )
 
@@ -140,7 +140,7 @@ class GitHubAPI:
                 ssh_url=r.get("sshUrl", ""),
                 stargazers_count=r.get("stargazerCount", 0),
                 forks_count=r.get("forkCount", 0),
-                topics=r.get("repositoryTopics", []),
+                topics=r.get("repositoryTopics") or [],
                 primary_language=r.get("primaryLanguage", {}).get("name") if r.get("primaryLanguage") else None,
             )
             for r in repos

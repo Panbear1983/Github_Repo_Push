@@ -47,6 +47,29 @@ class ListOpenPRsTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 GitHubAPI("Panbear1983").list_open_prs("foo")
 
+
+class TopicsNullRegressionTests(unittest.TestCase):
+    """`gh repo view --json repositoryTopics` returns the JSON literal `null`
+    (not `[]`) for a repo with zero topics — confirmed live against a real
+    repo 2026-09-24. `dict.get(key, default)` does NOT apply the default when
+    the key is present with value None, so this silently produced
+    `topics=None` and broke anything trying to iterate it (found via
+    profile_ai's `', '.join(topics)` raising "can only join an iterable")."""
+
+    def test_get_repo_topics_defaults_to_list_when_field_is_json_null(self):
+        payload = '{"name":"foo","repositoryTopics":null,"isPrivate":false}'
+        with mock.patch("github_repo_push.github_api.subprocess.run", return_value=_completed(stdout=payload)):
+            repo = GitHubAPI("Panbear1983").get_repo("foo")
+        self.assertEqual(repo.topics, [])
+
+    def test_list_repos_topics_defaults_to_list_when_field_is_json_null(self):
+        payload = '[{"name":"foo","repositoryTopics":null,"isPrivate":false}]'
+        with mock.patch("github_repo_push.github_api.subprocess.run", return_value=_completed(stdout=payload)):
+            repos = GitHubAPI("Panbear1983").list_repos()
+        self.assertEqual(repos[0].topics, [])
+
+
+class GetRepoTimeoutParamTests(unittest.TestCase):
     def test_existing_calls_unaffected_by_timeout_param(self):
         # get_repo/list_repos never pass timeout= — confirm _run_gh still defaults to None
         # (i.e. subprocess.run is called without blocking on a timeout kwarg mismatch).

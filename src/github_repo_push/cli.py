@@ -229,6 +229,82 @@ def profile_update(push):
         raise click.Abort()
 
 
+@cli.command(name="profile-intro")
+@click.option("--file", "file_path", type=click.Path(exists=True, dir_okay=False),
+              help="Publish this file's content as the new intro (default: just show what's live).")
+@click.option("--dry-run", is_flag=True, help="With --file, preview the full page without pushing.")
+def profile_intro(file_path, dry_run):
+    """Show or replace the profile page's hand-written intro zone.
+
+    This is the one part of the page that automatic project-listing updates
+    (push, `profile-suggest`) are built to never overwrite. Run with no
+    options to print what's live right now; edit that text in your own
+    editor, save it, then pass it back with --file to publish it.
+    """
+    from github_repo_push.profile_readme import fetch_current_manual_section, set_manual_section
+
+    registry = Registry(CONFIG_DIR)
+    registry.load()
+
+    if not file_path:
+        click.echo(fetch_current_manual_section(registry))
+        return
+
+    new_text = Path(file_path).read_text(encoding="utf-8")
+    ok, message = set_manual_section(registry, new_text, dry_run=dry_run)
+    if dry_run:
+        click.echo(message)
+    else:
+        click.echo(("✓ " if ok else "✗ ") + message)
+        if not ok:
+            raise click.Abort()
+
+
+@cli.command(name="profile-suggest")
+@click.argument("repo_name")
+@click.option("--apply", is_flag=True, help="Write and push the suggestion immediately (default: preview only).")
+def profile_suggest(repo_name, apply):
+    """AI-drafted profile-page description for one repo, grounded in its own README.
+
+    Preview-only by default — never publishes without --apply. Runs through
+    your existing Claude subscription (`claude -p`), not a metered API key.
+    Refuses on a private repo (nothing on the public profile page should
+    point at one).
+    """
+    from github_repo_push.profile_ai import suggest_profile_entry
+
+    registry = Registry(CONFIG_DIR)
+    registry.load()
+    syncer = Syncer(registry, DATA_DIR)
+    config = registry.get_repo(repo_name)
+    if not config:
+        click.echo(f"Error: Repository '{repo_name}' not found in registry.", err=True)
+        raise click.Abort()
+    if config.visibility != "public":
+        click.echo(f"Error: '{repo_name}' is private — it can't be linked from the public profile page.", err=True)
+        raise click.Abort()
+
+    try:
+        suggestion = suggest_profile_entry(config, registry.profile_config, syncer.github_api)
+    except Exception as exc:
+        click.echo(f"✗ Could not generate a suggestion: {exc}", err=True)
+        raise click.Abort()
+
+    click.echo(f"Section: {suggestion.section}" + (" (NEW)" if suggestion.is_new_section else ""))
+    click.echo(f"{'Current' if not suggestion.is_new_entry else 'No existing'} description: "
+               f"{suggestion.current_description or '(none)'}")
+    click.echo(f"Suggested:  {suggestion.description}")
+    if suggestion.grounding_note:
+        click.echo(f"Note: {suggestion.grounding_note}")
+
+    if apply:
+        from github_repo_push.profile_ai import apply_suggestion
+        ok, message = apply_suggestion(registry, config, suggestion)
+        click.echo(("✓ " if ok else "✗ ") + message)
+        if not ok:
+            raise click.Abort()
+
+
 @cli.command()
 @click.argument("path", required=False, default=".")
 @click.option("--description", help="Description used if a README must be generated.")
@@ -330,7 +406,10 @@ def dashboard():
 
     Rows stream in as repo states arrive; key bindings push and add repos
     through the same guarded Syncer path as the CLI (p = push, u = pull
-    (fast-forward only), a = add, enter = expand/collapse a repo's folders
+    (fast-forward only), a = add, i = draft a profile-page description via
+    Claude (grounded in the repo's own README, always shown for approval
+    first), e = hand-edit the profile page's protected intro zone (never
+    touched by automatic updates), enter = expand/collapse a repo's folders
     or reveal a file in Finder, / = search every repo for a name,
     o = open PRs, r = refresh, q = quit).
     """
