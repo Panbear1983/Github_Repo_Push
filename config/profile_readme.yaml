@@ -77,6 +77,14 @@ sections:
   level: 2
   preamble: ''
   repos:
+  - name: Claude_Voice
+    title: Claude Voice
+    path: null
+    featured: true
+    description: Hands-free voice conversation with Claude Code on the Mac and iPhone,
+      with on-device speech recognition, pause-to-send, interruptible spoken replies
+      in English and Mandarin, and one conversation shared across both devices.
+    ai_prompt: null
   - name: Kash_Realestate_Property_Database
     title: Kash Real Estate Intelligence Pipeline
     path: null

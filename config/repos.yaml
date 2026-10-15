@@ -395,3 +395,23 @@ repos:
   cron_enabled: false
   visibility: private
   enabled: false
+- name: Claude_Voice
+  local_path: /Users/peter/GitHub/Claude_Voice
+  remote: Panbear1983/Claude_Voice
+  default_branch: main
+  push_branch: main
+  protected_branches:
+  - main
+  - master
+  require_pr: false
+  ignore_patterns: []
+  profile_section: Applied Automation
+  profile_featured: true
+  profile_description: Hands-free voice conversation with Claude Code on the Mac and
+    iPhone
+  profile_ai_prompt: null
+  tags: []
+  cron_schedule: null
+  cron_enabled: false
+  visibility: private
+  enabled: true
